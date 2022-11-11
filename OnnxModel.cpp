@@ -100,11 +100,17 @@ bool OnnxModel::infer()
     // Memcpy from host input buffers to device input buffers
     buffers.copyInputToDevice();
 
+    clock_t start, inference_end;
+    start = clock();
+
     bool status = context->executeV2(buffers.getDeviceBindings().data());
     if (!status)
     {
         return false;
     }
+
+    inference_end = clock();
+    std::cout << "inference used time = " << (double)(inference_end - start) << std::endl;//联想 26093ms  551roi 约47ms每个roi（640*640）
 
     // Memcpy from device output buffers to host output buffers
     buffers.copyOutputToHost();
@@ -158,13 +164,24 @@ bool OnnxModel::processInput(const samplesCommon::BufferManager& buffers)
 
     float* hostDataBuffer = static_cast<float*>(buffers.getHostBuffer(mParams.inputTensorNames[0]));
 
-    cv::Mat img = cv::imread("D:/TestData/cocotest_640.jpg", cv::IMREAD_COLOR);
-    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-    cvMat2Buffer(img, hostDataBuffer);
 
-    cv::Mat img2 = cv::imread("D:/TestData/bus_640.jpg", cv::IMREAD_COLOR);
-    cv::cvtColor(img2, img2, cv::COLOR_BGR2RGB);
-    cvMat2Buffer(img2, hostDataBuffer + inputC * inputH * inputH);
+    int one_imgsize = inputC * inputH * inputH;
+    for (int i = 0; i < inputN; i++)
+    {
+        if (i % 2 == 0)
+        {
+            cv::Mat img = cv::imread("cocotest_640.jpg", cv::IMREAD_COLOR);
+            cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+            cvMat2Buffer(img, hostDataBuffer + i * one_imgsize);
+        }
+        else
+        {
+            cv::Mat img2 = cv::imread("bus_640.jpg", cv::IMREAD_COLOR);
+            cv::cvtColor(img2, img2, cv::COLOR_BGR2RGB);
+            cvMat2Buffer(img2, hostDataBuffer + i * one_imgsize);
+        }
+
+    }
 
     return true;
 }
@@ -194,11 +211,21 @@ bool OnnxModel::yolo_verifyOutput(const samplesCommon::BufferManager& buffers)
         break;
     }
 
-    cv::Mat img = cv::imread("D:/TestData/cocotest_640.jpg", cv::IMREAD_COLOR);
-    predOneImage(img, output, outputBoxecount, outputBoxInfo);
+    int onepred_size = outputBoxecount * outputBoxInfo;
 
-    cv::Mat img2 = cv::imread("D:/TestData/bus_640.jpg", cv::IMREAD_COLOR);
-    predOneImage(img2, output + outputBoxecount * outputBoxInfo, outputBoxecount, outputBoxInfo);
+    for (int i = 0; i < outputN; i++)
+    {
+        if (i % 2 == 0)
+        {
+            cv::Mat img = cv::imread("cocotest_640.jpg", cv::IMREAD_COLOR);
+            predOneImage(img, output + i * onepred_size, outputBoxecount, outputBoxInfo);
+        }
+        else
+        {
+            cv::Mat img2 = cv::imread("bus_640.jpg", cv::IMREAD_COLOR);
+            predOneImage(img2, output + i * onepred_size, outputBoxecount, outputBoxInfo);
+        }
+    }
 
     return true;
 }
