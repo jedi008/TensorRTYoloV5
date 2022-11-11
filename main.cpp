@@ -73,7 +73,6 @@ void printHelpInfo()
 
 int main(int argc, char** argv)
 {
-    std::cout << "step================================0" << std::endl;
     samplesCommon::Args args;
     bool argsOK = samplesCommon::parseArgs(args, argc, argv);
     if (!argsOK)
@@ -88,15 +87,11 @@ int main(int argc, char** argv)
         return EXIT_SUCCESS;
     }
 
-    std::cout << "step================================1" << std::endl;
-
     auto sampleTest = sample::gLogger.defineTest(gSampleName, argc, argv);
 
     sample::gLogger.reportTestStart(sampleTest);
 
     OnnxModel sample(initializeSampleParams(args));
-
-    std::cout << "step================================2" << std::endl;
 
     sample::gLogInfo << "Building and running a GPU inference engine for Onnx YoLoV5" << std::endl;
 

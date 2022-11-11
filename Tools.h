@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdlib>
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -163,4 +165,8 @@ static void my_draw_objects(const cv::Mat& bgr, const std::vector<Object>& objec
     cv::imshow("image", image);
     cv::waitKey(0);
 }
+
+void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer);
+
+void predOneImage(cv::Mat& img, float* output, int outputBoxecount, int outputBoxInfo);
 
