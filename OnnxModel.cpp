@@ -15,7 +15,7 @@ bool OnnxModel::build()
     }
 
     const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
-    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));
+    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));//nvinfer1::INetworkDefinition *network
     if (!network)
     {
         return false;
@@ -26,6 +26,7 @@ bool OnnxModel::build()
     {
         return false;
     }
+
 
     auto parser = SampleUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, sample::gLogger.getTRTLogger()));
     if (!parser)
@@ -38,6 +39,7 @@ bool OnnxModel::build()
     {
         return false;
     }
+
 
     // CUDA stream used for profiling by the builder.
     auto profileStream = samplesCommon::makeCudaStream();
@@ -74,7 +76,148 @@ bool OnnxModel::build()
     mOutputDims = network->getOutput(0)->getDimensions();
 
     std::cout << "mOutputDims.nbDims: " << mOutputDims.nbDims << std::endl;
-    //ASSERT(mOutputDims.nbDims == 2);
+    ASSERT(mOutputDims.nbDims == 3);
+
+    return true;
+}
+
+bool OnnxModel::build_from_enginefile()
+{
+    auto builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(sample::gLogger.getTRTLogger()));
+    if (!builder)
+    {
+        return false;
+    }
+
+    const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));//nvinfer1::INetworkDefinition *network
+    if (!network)
+    {
+        return false;
+    }
+
+    auto config = SampleUniquePtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
+    if (!config)
+    {
+        return false;
+    }
+
+
+    auto parser = SampleUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, sample::gLogger.getTRTLogger()));
+    if (!parser)
+    {
+        return false;
+    }
+
+    auto constructed = constructNetwork(builder, network, config, parser);
+    if (!constructed)
+    {
+        return false;
+    }
+
+    ASSERT(network->getNbInputs() == 1);
+    mInputDims = network->getInput(0)->getDimensions();
+    ASSERT(mInputDims.nbDims == 4);
+
+    ASSERT(network->getNbOutputs() == 1);
+    mOutputDims = network->getOutput(0)->getDimensions();
+
+    std::cout << "mOutputDims.nbDims: " << mOutputDims.nbDims << std::endl;
+    ASSERT(mOutputDims.nbDims == 3);
+    
+    std::string engine_filename = "yolov5s.engine";
+    std::ifstream f(engine_filename.c_str());
+    if (f.good())
+    {
+        f.close();
+        if (!load_enginefile(engine_filename)) return false;
+    }
+    else
+    {
+        if (!save_enginefile(builder, config, network, engine_filename)) return false;
+    }
+    
+    return true;
+}
+
+bool OnnxModel::save_enginefile(SampleUniquePtr<nvinfer1::IBuilder>& builder,
+                                SampleUniquePtr <nvinfer1::IBuilderConfig>& config,
+                                SampleUniquePtr <nvinfer1::INetworkDefinition>& network,
+                                std::string engine_filename)
+{
+    // CUDA stream used for profiling by the builder.
+    auto profileStream = samplesCommon::makeCudaStream();
+    if (!profileStream)
+    {
+        return false;
+    }
+    config->setProfileStream(*profileStream);
+
+    SampleUniquePtr<IHostMemory> plan{ builder->buildSerializedNetwork(*network, *config) };
+    if (!plan)
+    {
+        return false;
+    }
+
+    SampleUniquePtr<IRuntime> runtime{ createInferRuntime(sample::gLogger.getTRTLogger()) };
+    if (!runtime)
+    {
+        return false;
+    }
+
+    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
+        runtime->deserializeCudaEngine(plan->data(), plan->size()), samplesCommon::InferDeleter());
+    if (!mEngine)
+    {
+        return false;
+    }
+
+
+    //nvinfer1::IHostMemory* serialized_model = builder->buildSerializedNetwork(*network, *config);
+
+    IHostMemory* serialized_model = mEngine->serialize();
+
+
+    // 将模型序列化到engine文件中
+    //const std::string engine_file_path = "yolov5s.engine";
+    std::ofstream out_file(engine_filename, std::ios::binary);
+    assert(out_file.is_open());
+    out_file.write(reinterpret_cast<const char*>(serialized_model->data()), serialized_model->size()); // 写入
+    out_file.close();
+
+
+    return true;
+}
+
+bool OnnxModel::load_enginefile(std::string engine_filename)
+{
+    std::ifstream ifs(engine_filename, std::ios::binary);
+
+    if (!ifs.is_open())
+    {
+        std::cout << "engine_file open fail" << std::endl;
+        return false;
+    }
+
+    ifs.seekg(0, ifs.end);	// 将读指针从文件末尾开始移动0个字节
+    size_t model_size = ifs.tellg();	// 返回读指针的位置，此时读指针的位置就是文件的字节数
+    ifs.seekg(0, ifs.beg);	// 将读指针从文件开头开始移动0个字节
+    char* modelStream = new char[model_size];
+    ifs.read(modelStream, model_size);
+    ifs.close();
+
+
+    nvinfer1::IRuntime* runtime = nvinfer1::createInferRuntime(sample::gLogger.getTRTLogger());
+
+    //nvinfer1::ICudaEngine* engine = runtime->deserializeCudaEngine(model_mem, model_size);
+    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
+        runtime->deserializeCudaEngine(modelStream, model_size), samplesCommon::InferDeleter());
+    if (!mEngine)
+    {
+        return false;
+    }
+
+    delete runtime;
 
     return true;
 }
