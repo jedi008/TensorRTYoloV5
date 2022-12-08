@@ -9,6 +9,12 @@ int main()
 {
     YoloV5Model* yolov5_model = new YoloV5Model();
     yolov5_model->build_from_enginefile("yolov5s.onnx");
+
+    std::vector<cv::Mat > images;
+    cv::Mat img = cv::imread("cocotest_640.jpg", cv::IMREAD_COLOR);
+    images.push_back(img);
+
+    yolov5_model->infer(images);
     
     std::cout << "Hello World!\n";
 }

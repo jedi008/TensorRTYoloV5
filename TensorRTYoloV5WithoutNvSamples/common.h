@@ -9,6 +9,18 @@
 //#include ".\windows\getopt.h"
 //#endif
 
+#undef CHECK
+#define CHECK(status)                                                                                                  \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        auto ret = (status);                                                                                           \
+        if (ret != 0)                                                                                                  \
+        {                                                                                                              \
+            std::cerr << "Cuda failure: " << ret << std::endl;                                                         \
+            abort();                                                                                                   \
+        }                                                                                                              \
+    } while (0)
+
 #undef ASSERT
 #define ASSERT(condition)                                                   \
     do                                                                      \

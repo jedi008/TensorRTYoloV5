@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "Tools.h"
+
 YoloV5Model::YoloV5Model()
 {
 }
@@ -54,11 +56,11 @@ bool YoloV5Model::build_from_enginefile(std::string onnxfilename)
 
 
 	ASSERT(network->getNbInputs() == 1);
-	nvinfer1::Dims mInputDims = network->getInput(0)->getDimensions();
+	mInputDims = network->getInput(0)->getDimensions();
 	ASSERT(mInputDims.nbDims == 4);
 
 	ASSERT(network->getNbOutputs() == 1);
-	nvinfer1::Dims mOutputDims = network->getOutput(0)->getDimensions();
+	mOutputDims = network->getOutput(0)->getDimensions();
 
 	std::cout << "mOutputDims.nbDims: " << mOutputDims.nbDims << std::endl;
 	ASSERT(mOutputDims.nbDims == 3);
@@ -76,6 +78,74 @@ bool YoloV5Model::build_from_enginefile(std::string onnxfilename)
 		if (!save_enginefile(builder, config, network, engine_filename)) return false;
 	}
 
+	return true;
+}
+
+bool YoloV5Model::infer(std::vector<cv::Mat > images)
+{
+	auto context = SampleUniquePtr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
+	if (!context)
+	{
+		return false;
+	}
+	
+	std::cout << "\nmInputDims.nbDims: " << mInputDims.nbDims << std::endl;
+	std::cout << "\nmInputDims.d[0]: " << mInputDims.d[0] << std::endl;
+	std::cout << "\nmInputDims.d[1]: " << mInputDims.d[1] << std::endl;
+	std::cout << "\nmInputDims.d[2]: " << mInputDims.d[2] << std::endl;
+	std::cout << "\nmInputDims.d[3]: " << mInputDims.d[3] << std::endl;
+
+	void* buffers[2];
+	// 获取模型输入尺寸并分配GPU内存
+	const int inputBatch_size = mInputDims.d[0];
+	if (inputBatch_size < images.size()) 
+		return false;
+	const int inputC = mInputDims.d[1];
+	const int inputH = mInputDims.d[2];
+	const int inputW = mInputDims.d[3];
+	int one_imgsize = inputC * inputH * inputW;
+	int input_size = one_imgsize * inputBatch_size * sizeof(float);
+	cudaMalloc(&buffers[0], input_size);
+
+	// 获取模型输出尺寸并分配GPU内存
+	const int outputBatch_size = mOutputDims.d[0]; //batch_size
+	const int outputBoxecount = mOutputDims.d[1];
+	const int outputBoxInfo = mOutputDims.d[2];
+	//int output_size = 1;
+	//for (int j = 0; j < output_dim.nbDims; ++j) {
+	//	output_size *= output_dim.d[j];
+	//}
+	int output_size = outputBatch_size * outputBoxecount * outputBoxInfo * sizeof(float);
+	cudaMalloc(&buffers[1], output_size);
+
+	
+	// 给模型输出数据分配相应的CPU内存
+	float* host_input_buffer = (float*)malloc(input_size);
+	float* host_output_buffer = (float*)malloc(output_size);
+
+	for (int i = 0; i < images.size(); i++)
+	{
+		cv::Mat img = images[i];
+
+		cv::Mat img_input;
+		cv::cvtColor(img, img_input, cv::COLOR_BGR2RGB);
+		cvMat2Buffer(img_input, host_input_buffer + i * one_imgsize);
+	}
+
+	//copyInputToDevice
+	CHECK(cudaMemcpy(buffers[0], host_input_buffer, input_size, cudaMemcpyHostToDevice));
+	
+	bool status = context->executeV2(buffers);
+	if (!status)
+	{
+		return false;
+	}
+
+	//copyOutputToHost
+	CHECK(cudaMemcpy(host_output_buffer, buffers[1], output_size, cudaMemcpyDeviceToHost));
+	
+	
+	
 	return true;
 }
 
