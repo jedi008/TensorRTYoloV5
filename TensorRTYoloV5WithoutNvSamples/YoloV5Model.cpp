@@ -143,8 +143,38 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 
 	//copyOutputToHost
 	CHECK(cudaMemcpy(host_output_buffer, buffers[1], output_size, cudaMemcpyDeviceToHost));
-	
-	
+
+
+	int onepred_size = outputBoxecount * outputBoxInfo;
+	std::vector<Object> proposals;
+	for (int i = 0; i < images.size(); i++)
+	{
+		cv::Mat img = images[i];
+		std::vector<Object> objects = predOneImage(img, host_output_buffer + i * onepred_size, outputBoxecount, outputBoxInfo, 0.45, 0.35);
+
+
+		//图块上检测结果转换为大图上的坐标
+		//for (int j = 0; j < objects.size(); j++)
+		//{
+		//	objects[j].rect.x += pads.at(i).x;
+		//	objects[j].rect.y += pads.at(i).y;
+		//}
+
+		//proposals.insert(proposals.end(), objects.begin(), objects.end());
+
+		static const std::vector<std::string> class_names_default = {
+			"person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
+			"fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+			"elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+			"skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+			"tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+			"sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
+			"potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
+			"microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
+			"hair drier", "toothbrush"
+		};
+		draw_objects(img, objects, class_names_default);
+	}
 	
 	return true;
 }

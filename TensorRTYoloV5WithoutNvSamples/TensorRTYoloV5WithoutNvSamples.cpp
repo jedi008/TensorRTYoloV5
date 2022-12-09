@@ -14,6 +14,9 @@ int main()
     cv::Mat img = cv::imread("cocotest_640.jpg", cv::IMREAD_COLOR);
     images.push_back(img);
 
+    cv::Mat img2 = cv::imread("bus_640.jpg", cv::IMREAD_COLOR);
+    images.push_back(img2);
+
     yolov5_model->infer(images);
     
     std::cout << "Hello World!\n";
