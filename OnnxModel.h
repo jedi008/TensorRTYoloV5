@@ -26,6 +26,16 @@ public:
     bool build();
 
     //!
+    //! \brief Function builds the  engine
+    //!
+    bool build_from_enginefile();
+    bool save_enginefile(SampleUniquePtr<nvinfer1::IBuilder>& builder, 
+                         SampleUniquePtr <nvinfer1::IBuilderConfig>& config, 
+                         SampleUniquePtr <nvinfer1::INetworkDefinition>& network,
+                         std::string engine_filename);
+    bool load_enginefile(std::string engine_filename);
+
+    //!
     //! \brief Runs the TensorRT inference engine for this sample
     //!
     bool infer();

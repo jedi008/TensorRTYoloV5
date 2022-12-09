@@ -95,7 +95,7 @@ int main(int argc, char** argv)
 
     sample::gLogInfo << "Building and running a GPU inference engine for Onnx YoLoV5" << std::endl;
 
-    if (!sample.build())
+    if (!sample.build_from_enginefile())
     {
         return sample::gLogger.reportFail(sampleTest);
     }

@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{599f3a58-8e20-48c2-915b-85e83e1fcb38}</ProjectGuid>
-    <RootNamespace>TensorRTYoloV5</RootNamespace>
+    <ProjectGuid>{4ab716f0-7e48-4f9c-8ebd-e4d7cf933324}</ProjectGuid>
+    <RootNamespace>TensorRTYoloV5WithoutNvSamples</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -72,24 +72,18 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)\bin\</OutDir>
-    <IncludePath>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\include;D:\opencv452\build\include;D:\opencv452\build\include\opencv2;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\lib\x64;D:\opencv452\build\x64\vc15\lib;$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)bin</OutDir>
-    <IncludePath>D:\opencv452\build\include\opencv2;D:\opencv452\build\include;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\opencv452\build\x64\vc15\lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\lib\x64;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;..\..\lib;$(CUDA_PATH)\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)bin</OutDir>
     <IncludePath>D:\opencv452\build\include\opencv2;D:\opencv452\build\include;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\opencv452\build\x64\vc15\lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\lib\x64;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)bin</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -101,7 +95,6 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;opencv_world452.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);nvinfer.lib;nvinfer_plugin.lib;nvonnxparser.lib;nvparsers.lib;cudnn.lib;cublas.lib;cudart.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -118,7 +111,6 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;opencv_world452.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);nvinfer.lib;nvinfer_plugin.lib;nvonnxparser.lib;nvparsers.lib;cudnn.lib;cublas.lib;cudart.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -135,13 +127,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level1</WarningLevel>
+      <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -152,44 +143,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="common\getOptions.cpp" />
-    <ClCompile Include="common\logger.cpp" />
-    <ClCompile Include="common\sampleEngines.cpp" />
-    <ClCompile Include="common\sampleInference.cpp" />
-    <ClCompile Include="common\sampleOptions.cpp" />
-    <ClCompile Include="common\sampleReporting.cpp" />
-    <ClCompile Include="common\sampleUtils.cpp" />
-    <ClCompile Include="common\windows\getopt.c" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="OnnxModel.cpp" />
+    <ClCompile Include="TensorRTYoloV5WithoutNvSamples.cpp" />
     <ClCompile Include="Tools.cpp" />
+    <ClCompile Include="windows\getopt.c" />
+    <ClCompile Include="YoloV5Model.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="common\argsParser.h" />
-    <ClInclude Include="common\BatchStream.h" />
-    <ClInclude Include="common\buffers.h" />
-    <ClInclude Include="common\common.h" />
-    <ClInclude Include="common\EntropyCalibrator.h" />
-    <ClInclude Include="common\ErrorRecorder.h" />
-    <ClInclude Include="common\getOptions.h" />
-    <ClInclude Include="common\half.h" />
-    <ClInclude Include="common\logger.h" />
-    <ClInclude Include="common\logging.h" />
-    <ClInclude Include="common\parserOnnxConfig.h" />
-    <ClInclude Include="common\safeCommon.h" />
-    <ClInclude Include="common\sampleConfig.h" />
-    <ClInclude Include="common\sampleDevice.h" />
-    <ClInclude Include="common\sampleEngines.h" />
-    <ClInclude Include="common\sampleInference.h" />
-    <ClInclude Include="common\sampleOptions.h" />
-    <ClInclude Include="common\sampleReporting.h" />
-    <ClInclude Include="common\sampleUtils.h" />
-    <ClInclude Include="common\windows\getopt.h" />
-    <ClInclude Include="OnnxModel.h" />
+    <ClInclude Include="common.h" />
     <ClInclude Include="Tools.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="common\dumpTFWts.py" />
+    <ClInclude Include="windows\getopt.h" />
+    <ClInclude Include="YoloV5Model.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
