@@ -17,7 +17,15 @@ int main()
     cv::Mat img2 = cv::imread("bus_640.jpg", cv::IMREAD_COLOR);
     images.push_back(img2);
 
+    
+    clock_t start, inference_end;
+    start = clock();
+
     yolov5_model->infer(images);
+
+    inference_end = clock();
+    std::cout << "inference rois used time = " << (double)(inference_end - start) << std::endl;//first time: 4356ms
+
     
     std::cout << "Hello World!\n";
 }

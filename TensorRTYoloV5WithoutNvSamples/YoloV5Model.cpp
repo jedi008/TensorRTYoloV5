@@ -179,7 +179,7 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 			"microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
 			"hair drier", "toothbrush"
 		};
-		draw_objects(img, objects, class_names_default);
+		//draw_objects(img, objects, class_names_default);
 	}
 
 	cudaFree(buffers[0]);
