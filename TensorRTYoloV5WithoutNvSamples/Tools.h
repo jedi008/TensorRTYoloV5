@@ -24,7 +24,7 @@ static inline float intersection_area(const Object& a, const Object& b)
 
 void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer);
 
-std::vector<Object> predOneImage(cv::Mat& img, float* output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold);
+std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold);
 
 void qsort_descent_inplace(std::vector<Object>& faceobjects, int left, int right);
 

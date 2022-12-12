@@ -150,7 +150,13 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 	for (int i = 0; i < images.size(); i++)
 	{
 		cv::Mat img = images[i];
-		std::vector<Object> objects = predOneImage(img, host_output_buffer + i * onepred_size, outputBoxecount, outputBoxInfo, 0.45, 0.35);
+		std::vector<Object> objects = predOneImage(	img, 
+													(float*)buffers[1] + i * onepred_size, 
+													host_output_buffer + i * onepred_size,
+													outputBoxecount, 
+													outputBoxInfo, 
+													0.45, 
+													0.35);
 
 
 		//图块上检测结果转换为大图上的坐标

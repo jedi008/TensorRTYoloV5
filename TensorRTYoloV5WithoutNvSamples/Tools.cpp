@@ -26,7 +26,7 @@ void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer)
     //std::cout << std::endl;
 }
 
-std::vector<Object> predOneImage(cv::Mat& img, float* output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
+std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
 {
     
     std::vector<Object> proposals;
@@ -66,24 +66,26 @@ std::vector<Object> predOneImage(cv::Mat& img, float* output, int outputBoxecoun
         float* class_index = (float*)malloc(indexs_size);
         class_index[0] = 0;
 
-        cudaError_t cudaStatus = find_the_max_class_score(output + (i * outputBoxInfo + 5), class_index, indexs_size);
+        cudaError_t cudaStatus = find_the_max_class_score(cuda_output + (i * outputBoxInfo + 5), class_index, indexs_size);
 
         cudaStatus = cudaDeviceSynchronize();
         if (cudaStatus != cudaSuccess) {
-            fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching Kernel!\n", cudaStatus);
+            fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching Kernel in .cpp!\n", cudaStatus);
+            exit(0);
         }
 
         int int_class_index = round(class_index[0]);
+        //fprintf(stderr, "int_class_index: %d\n", int_class_index);
 
-        float confidence = output[int_class_index] * output[i * outputBoxInfo + 4];
+        float confidence = host_output[int_class_index] * host_output[i * outputBoxInfo + 4];
 
         if (confidence < confidence_threshold)
             continue;
 
-        float pb_cx = output[i * outputBoxInfo + 0];
-        float pb_cy = output[i * outputBoxInfo + 1];
-        float pb_w = output[i * outputBoxInfo + 2];
-        float pb_h = output[i * outputBoxInfo + 3];
+        float pb_cx = host_output[i * outputBoxInfo + 0];
+        float pb_cy = host_output[i * outputBoxInfo + 1];
+        float pb_w = host_output[i * outputBoxInfo + 2];
+        float pb_h = host_output[i * outputBoxInfo + 3];
 
         float x0 = pb_cx - pb_w * 0.5f;
         float y0 = pb_cy - pb_h * 0.5f;
@@ -224,6 +226,7 @@ void nms_sorted_bboxes(const std::vector<Object>& faceobjects, std::vector<int>&
 
 std::string draw_objects(const cv::Mat& bgr, const std::vector<Object>& objects, std::vector<std::string> class_names)
 {
+    fprintf(stderr, "draw_objects called\n");
     //static const std::vector<const char*> class_names_default = {
 //"person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
 //"fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
