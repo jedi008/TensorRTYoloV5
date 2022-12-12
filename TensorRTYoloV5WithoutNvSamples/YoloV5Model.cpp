@@ -175,6 +175,11 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 		};
 		draw_objects(img, objects, class_names_default);
 	}
+
+	cudaFree(buffers[0]);
+	cudaFree(buffers[1]);
+	free(host_input_buffer);
+	free(host_output_buffer);
 	
 	return true;
 }
