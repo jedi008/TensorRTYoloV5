@@ -42,4 +42,8 @@
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="CudaOp.cuh" />
+    <CudaCompile Include="CudaOp.cu" />
+  </ItemGroup>
 </Project>

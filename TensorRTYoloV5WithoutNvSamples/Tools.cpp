@@ -1,5 +1,8 @@
 #include "Tools.h"
 
+#include "CudaOp.cuh"
+#include <iostream>
+
 void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer)
 {
     const int channels = img.channels();
@@ -25,22 +28,54 @@ void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer)
 
 std::vector<Object> predOneImage(cv::Mat& img, float* output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
 {
+    
     std::vector<Object> proposals;
+    
+    
+    //const int arraySize = 5;
+    //const int a[arraySize] = { 1, 2, 3, 4, 5 };
+    //const int b[arraySize] = { 10, 20, 30, 40, 50 };
+    //int c[arraySize] = { 0 };
+
+    //// Add vectors in parallel.
+    //cudaError_t cudaStatus = addWithCuda2(c, a, b, arraySize);
+    //if (cudaStatus != cudaSuccess) {
+    //    fprintf(stderr, "addWithCuda failed!");
+    //    return proposals;
+    //}
+
+    //printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
+    //    c[0], c[1], c[2], c[3], c[4]);
+
+    //// cudaDeviceReset must be called before exiting in order for profiling and
+    //// tracing tools such as Nsight and Visual Profiler to show complete traces.
+    //cudaStatus = cudaDeviceReset();
+    //if (cudaStatus != cudaSuccess) {
+    //    fprintf(stderr, "cudaDeviceReset failed!");
+    //    return proposals;
+    //}
+    //return proposals;
+
+
+    
+    
+    
     for (int i = 0; i < outputBoxecount; i++)
     {
-        // find class index with max class score
-        float class_score = -FLT_MAX;
-        int class_index = 0;
-        for (int k = 0; k < outputBoxInfo - 5; k++)
-        {
-            float score = output[i * outputBoxInfo + 5 + k];
-            if (score > class_score)
-            {
-                class_index = k;
-                class_score = score;
-            }
+        int indexs_size = 1 * sizeof(float);
+        float* class_index = (float*)malloc(indexs_size);
+        class_index[0] = 0;
+
+        cudaError_t cudaStatus = find_the_max_class_score(output + (i * outputBoxInfo + 5), class_index, indexs_size);
+
+        cudaStatus = cudaDeviceSynchronize();
+        if (cudaStatus != cudaSuccess) {
+            fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching Kernel!\n", cudaStatus);
         }
-        float confidence = class_score * output[i * outputBoxInfo + 4];
+
+        int int_class_index = round(class_index[0]);
+
+        float confidence = output[int_class_index] * output[i * outputBoxInfo + 4];
 
         if (confidence < confidence_threshold)
             continue;
@@ -60,7 +95,7 @@ std::vector<Object> predOneImage(cv::Mat& img, float* output, int outputBoxecoun
         obj.rect.y = y0;
         obj.rect.width = x1 - x0;
         obj.rect.height = y1 - y0;
-        obj.label = class_index;
+        obj.label = int_class_index;
         obj.prob = confidence;
 
         proposals.push_back(obj);
