@@ -93,6 +93,7 @@ Error:
 
 __global__ void find_the_max_class_score_kernel(float* cuda_output, float* cuda_p_indexs)
 {
+    //cudaMalloc 得到的数据只能在核函数中读写操作
     //int i = threadIdx.x;
     //cuda_p_indexs[0] = 0;
 
