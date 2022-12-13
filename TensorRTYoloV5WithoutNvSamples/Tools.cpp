@@ -28,37 +28,7 @@ void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer)
 
 std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
 {
-    
     std::vector<Object> proposals;
-    
-    
-    //const int arraySize = 5;
-    //const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    //const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    //int c[arraySize] = { 0 };
-
-    //// Add vectors in parallel.
-    //cudaError_t cudaStatus = addWithCuda2(c, a, b, arraySize);
-    //if (cudaStatus != cudaSuccess) {
-    //    fprintf(stderr, "addWithCuda failed!");
-    //    return proposals;
-    //}
-
-    //printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-    //    c[0], c[1], c[2], c[3], c[4]);
-
-    //// cudaDeviceReset must be called before exiting in order for profiling and
-    //// tracing tools such as Nsight and Visual Profiler to show complete traces.
-    //cudaStatus = cudaDeviceReset();
-    //if (cudaStatus != cudaSuccess) {
-    //    fprintf(stderr, "cudaDeviceReset failed!");
-    //    return proposals;
-    //}
-    //return proposals;
-
-
-    
-    
     
     for (int i = 0; i < outputBoxecount; i++)
     {
@@ -66,12 +36,12 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_o
         float* class_index = (float*)malloc(indexs_size);
         class_index[0] = 0;
 
-        find_the_max_class_score(cuda_output + (i * outputBoxInfo + 5), class_index, indexs_size);
+        find_onebox_max_class_score(cuda_output + (i * outputBoxInfo + 5), class_index, indexs_size);
 
         int int_class_index = round(class_index[0]);
         //fprintf(stderr, "int_class_index: %d\n", int_class_index);
 
-        float confidence = host_output[int_class_index] * host_output[i * outputBoxInfo + 4];
+        float confidence = host_output[i * outputBoxInfo + 5 + int_class_index] * host_output[i * outputBoxInfo + 4];
 
         if (confidence < confidence_threshold)
             continue;
@@ -131,7 +101,7 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_o
         objects[i].rect.height = y1 - y0;
     }
 
-    //my_draw_objects(img, objects);
+    //draw_objects(img, objects);
 
     return objects;
 }
