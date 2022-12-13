@@ -91,7 +91,7 @@ Error:
 }
 
 
-__global__ void find_the_max_class_score_kernel(float* cuda_output, float* cuda_p_indexs)
+__global__ void find_onebox_max_class_score_kernel(float* cuda_output, float* cuda_p_indexs)
 {
     //cudaMalloc 得到的数据只能在核函数中读写操作
     //int i = threadIdx.x;
@@ -109,7 +109,7 @@ __global__ void find_the_max_class_score_kernel(float* cuda_output, float* cuda_
     cuda_p_indexs[0] = max_index;
 }
 
-cudaError_t find_the_max_class_score(float* cuda_output, float* class_index, unsigned int size)
+cudaError_t find_onebox_max_class_score(float* cuda_output, float* class_index, unsigned int size)
 {
     //fprintf(stderr, "find_the_max_class_score is called.\n");
     
@@ -123,7 +123,7 @@ cudaError_t find_the_max_class_score(float* cuda_output, float* class_index, uns
         goto Error;
     }
 
-    // Allocate GPU buffers for three vectors (two input, one output)    .
+    // Allocate GPU buffers.
     cudaStatus = cudaMalloc((void**)&cuda_p_indexs, size);
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "cudaMalloc failed!");
@@ -132,7 +132,7 @@ cudaError_t find_the_max_class_score(float* cuda_output, float* class_index, uns
 
     
     
-    find_the_max_class_score_kernel << <1, 1 >> > (cuda_output, cuda_p_indexs);
+    find_onebox_max_class_score_kernel << <1, 1 >> > (cuda_output, cuda_p_indexs);
     //fprintf(stderr, "cuda_p_indexs[0]: %f", cuda_p_indexs[0]); //crash!!!!!!!!!!!!!!!!!!!!
 
 
@@ -159,6 +159,155 @@ cudaError_t find_the_max_class_score(float* cuda_output, float* class_index, uns
 
 Error:
     cudaFree(cuda_p_indexs);
+    //cudaFree(dev_a);
+    //cudaFree(dev_b);
+
+    return cudaStatus;
+}
+
+
+__global__ void find_all_max_class_score_kernel(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask, int outputBoxecount)
+{
+    int n = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (n >= outputBoxecount) return;
+
+    int class_count = output_box_size - 5;//=80
+    int max_index = 0;
+    for (int k = 1; k < class_count; k++)
+    {
+        if (cuda_output[k] > cuda_output[max_index])
+        {
+            max_index = k;
+        }
+    }
+    cuda_objects_index[n] = max_index;
+    
+    float confidence = cuda_output[n * output_box_size + 5 + max_index] * cuda_output[n * output_box_size + 4];
+
+    static float confidence_threshold = 0.45;
+
+    cuda_objects_index_mask[n] = confidence < confidence_threshold ? 0 : 1;
+
+
+
+    //for (int i = 0; i < outputBoxecount; i++)
+    //{
+    //    int indexs_size = 1 * sizeof(float);
+    //    float* class_index = (float*)malloc(indexs_size);
+    //    class_index[0] = 0;
+
+    //    find_onebox_max_class_score(cuda_output + (i * outputBoxInfo + 5), class_index, indexs_size);
+
+    //    int int_class_index = round(class_index[0]);
+    //    //fprintf(stderr, "int_class_index: %d\n", int_class_index);
+
+    //    float confidence = host_output[int_class_index] * host_output[i * outputBoxInfo + 4];
+
+    //    if (confidence < confidence_threshold)
+    //        continue;
+
+    //    float pb_cx = host_output[i * outputBoxInfo + 0];
+    //    float pb_cy = host_output[i * outputBoxInfo + 1];
+    //    float pb_w = host_output[i * outputBoxInfo + 2];
+    //    float pb_h = host_output[i * outputBoxInfo + 3];
+
+    //    float x0 = pb_cx - pb_w * 0.5f;
+    //    float y0 = pb_cy - pb_h * 0.5f;
+    //    float x1 = pb_cx + pb_w * 0.5f;
+    //    float y1 = pb_cy + pb_h * 0.5f;
+
+    //    Object obj;
+    //    obj.rect.x = x0;
+    //    obj.rect.y = y0;
+    //    obj.rect.width = x1 - x0;
+    //    obj.rect.height = y1 - y0;
+    //    obj.label = int_class_index;
+    //    obj.prob = confidence;
+
+    //    proposals.push_back(obj);
+    //}
+}
+
+//后期再将其优化为并行模式，逐步两两相加
+__global__ void array_sum(int* cuda_array, int array_size)//该cuda_array 为定制化的，申请空间大小时为array_size + 1, 最后一位用于存放sum
+{
+    cuda_array[array_size] = 0;
+    for (int i = 0; i < array_size; i++)
+    {
+        cuda_array[array_size] += cuda_array[i];
+    }
+
+    printf("array_sum run successful\n");
+    printf("cuda_array[array_size]: %d\n", cuda_array[array_size]);
+}
+
+cudaError_t find_all_max_class_score(float* cuda_output, int outputBoxecount)
+{
+    int* cuda_objects_index;
+    int* cuda_objects_index_mask;
+    cudaError_t cudaStatus = cudaSuccess;
+
+    cudaStatus = cudaSetDevice(0);
+    if (cudaStatus != cudaSuccess)
+    {
+        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
+        //goto Error2;
+    }
+
+    // Allocate GPU buffers.
+    cudaStatus = cudaMalloc((void**)&cuda_objects_index, outputBoxecount * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        //goto Error2;
+    }
+    cudaStatus = cudaMalloc((void**)&cuda_objects_index_mask, 1 + outputBoxecount * sizeof(int));//多给一个size用于存放array的和
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        //goto Error2;
+    }
+
+    
+    
+    int output_box_size = 85;
+    int grid_size = (outputBoxecount + 512) / 1024;//outputBoxecount: 25200
+    find_all_max_class_score_kernel<<<grid_size, 1024 >>>(cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, outputBoxecount);
+
+    cudaStatus = cudaDeviceSynchronize();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching Kernel in .cu!\n", cudaStatus);
+        goto Error2;
+    }
+
+    // Check for any errors launching the kernel
+    cudaStatus = cudaGetLastError();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        goto Error2;
+    }
+
+
+
+    array_sum << <1, 1 >> > (cuda_objects_index_mask, outputBoxecount);
+    // Check for any errors launching the kernel
+    cudaStatus = cudaGetLastError();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        goto Error2;
+    }
+
+    cudaStatus = cudaDeviceSynchronize();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching Kernel in .cu!\n", cudaStatus);
+        goto Error2;
+    }
+
+
+
+    
+Error2:
+    cudaFree(cuda_objects_index);
+    cudaFree(cuda_objects_index_mask);
     //cudaFree(dev_a);
     //cudaFree(dev_b);
 

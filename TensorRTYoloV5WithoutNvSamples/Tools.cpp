@@ -29,7 +29,12 @@ void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer)
 std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
 {
     std::vector<Object> proposals;
+
+    find_all_max_class_score(cuda_output, outputBoxecount);
+
+    return proposals;
     
+    /*
     for (int i = 0; i < outputBoxecount; i++)
     {
         int indexs_size = 1 * sizeof(float);
@@ -104,6 +109,8 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_o
     //draw_objects(img, objects);
 
     return objects;
+
+    */
 }
 
 void qsort_descent_inplace(std::vector<Object>& faceobjects, int left, int right)
