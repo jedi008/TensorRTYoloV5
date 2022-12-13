@@ -66,13 +66,7 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_o
         float* class_index = (float*)malloc(indexs_size);
         class_index[0] = 0;
 
-        cudaError_t cudaStatus = find_the_max_class_score(cuda_output + (i * outputBoxInfo + 5), class_index, indexs_size);
-
-        cudaStatus = cudaDeviceSynchronize();
-        if (cudaStatus != cudaSuccess) {
-            fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching Kernel in .cpp!\n", cudaStatus);
-            exit(0);
-        }
+        find_the_max_class_score(cuda_output + (i * outputBoxInfo + 5), class_index, indexs_size);
 
         int int_class_index = round(class_index[0]);
         //fprintf(stderr, "int_class_index: %d\n", int_class_index);
