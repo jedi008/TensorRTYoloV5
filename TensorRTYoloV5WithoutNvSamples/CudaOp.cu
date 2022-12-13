@@ -1,7 +1,6 @@
 #include "CudaOp.cuh"
 
 
-#include <stdio.h>
 
 __global__ void addKernel(int* c, const int* a, const int* b)
 {
@@ -242,76 +241,34 @@ __global__ void array_sum(int* cuda_array, int array_size)//¸Ãcuda_array Îª¶¨ÖÆ»
     printf("cuda_array[array_size]: %d\n", cuda_array[array_size]);
 }
 
-cudaError_t find_all_max_class_score(float* cuda_output, int outputBoxecount)
+void find_all_max_class_score(float* cuda_output, int outputBoxecount)
 {
+    printf("find_all_max_class_score called.\n");
     int* cuda_objects_index;
     int* cuda_objects_index_mask;
-    cudaError_t cudaStatus = cudaSuccess;
 
-    cudaStatus = cudaSetDevice(0);
-    if (cudaStatus != cudaSuccess)
-    {
-        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
-        //goto Error2;
-    }
+    HANDLE_ERROR(cudaSetDevice(0));
 
     // Allocate GPU buffers.
-    cudaStatus = cudaMalloc((void**)&cuda_objects_index, outputBoxecount * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        //goto Error2;
-    }
-    cudaStatus = cudaMalloc((void**)&cuda_objects_index_mask, 1 + outputBoxecount * sizeof(int));//¶à¸øÒ»¸ösizeÓÃÓÚ´æ·ÅarrayµÄºÍ
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        //goto Error2;
-    }
-
+    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index, outputBoxecount * sizeof(int)) );
+    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index_mask, 1 + outputBoxecount * sizeof(int)));//¶à¸øÒ»¸ösizeÓÃÓÚ´æ·ÅarrayµÄºÍ
     
     
     int output_box_size = 85;
     int grid_size = (outputBoxecount + 512) / 1024;//outputBoxecount: 25200
     find_all_max_class_score_kernel<<<grid_size, 1024 >>>(cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, outputBoxecount);
-
-    cudaStatus = cudaDeviceSynchronize();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching Kernel in .cu!\n", cudaStatus);
-        goto Error2;
-    }
-
-    // Check for any errors launching the kernel
-    cudaStatus = cudaGetLastError();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-        goto Error2;
-    }
+    HANDLE_ERROR(cudaDeviceSynchronize());
+    HANDLE_ERROR(cudaGetLastError());
 
 
 
     array_sum << <1, 1 >> > (cuda_objects_index_mask, outputBoxecount);
-    // Check for any errors launching the kernel
-    cudaStatus = cudaGetLastError();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-        goto Error2;
-    }
-
-    cudaStatus = cudaDeviceSynchronize();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching Kernel in .cu!\n", cudaStatus);
-        goto Error2;
-    }
+    HANDLE_ERROR(cudaDeviceSynchronize());
+    HANDLE_ERROR(cudaGetLastError());
 
 
-
-    
-Error2:
     cudaFree(cuda_objects_index);
     cudaFree(cuda_objects_index_mask);
-    //cudaFree(dev_a);
-    //cudaFree(dev_b);
-
-    return cudaStatus;
 }
 
 
