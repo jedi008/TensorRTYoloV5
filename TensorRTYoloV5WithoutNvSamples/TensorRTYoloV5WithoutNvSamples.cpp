@@ -7,6 +7,8 @@
 
 int main()
 {
+    cudaSetDevice(0);
+    
     YoloV5Model* yolov5_model = new YoloV5Model();
     yolov5_model->build_from_enginefile("yolov5s.onnx");
 

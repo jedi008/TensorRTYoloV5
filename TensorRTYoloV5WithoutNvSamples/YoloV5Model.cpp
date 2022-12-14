@@ -142,7 +142,7 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 	}
 
 	//copyOutputToHost
-	CHECK(cudaMemcpy(host_output_buffer, buffers[1], output_size, cudaMemcpyDeviceToHost));
+	//CHECK(cudaMemcpy(host_output_buffer, buffers[1], output_size, cudaMemcpyDeviceToHost));
 
 
 	int onepred_size = outputBoxecount * outputBoxInfo;
@@ -151,8 +151,7 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 	{
 		cv::Mat img = images[i];
 		std::vector<Object> objects = predOneImage(	img, 
-													(float*)buffers[1] + i * onepred_size, 
-													host_output_buffer + i * onepred_size,
+													(float*)buffers[1] + i * onepred_size,
 													outputBoxecount, 
 													outputBoxInfo, 
 													0.45, 

@@ -26,7 +26,7 @@ void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer)
     //std::cout << std::endl;
 }
 
-std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, float* host_output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
+std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
 {
     std::vector<Object> proposals;
 
