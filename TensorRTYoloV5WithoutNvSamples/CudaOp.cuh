@@ -13,6 +13,4 @@ static void HandleError(cudaError_t err, const char* file, int line) {
 
 cudaError_t addWithCuda2(int* c, const int* a, const int* b, unsigned int size);
 
-cudaError_t find_onebox_max_class_score(float* cuda_output, float* class_index, unsigned int size);
-
 void find_all_max_class_score(float* cuda_output, int outputBoxecount);
