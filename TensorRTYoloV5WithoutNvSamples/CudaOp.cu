@@ -173,18 +173,20 @@ __global__ void find_all_max_class_score_kernel(float* cuda_output, int output_b
 
     int class_count = output_box_size - 5;//=80
     int max_index = 0;
+
     for (int k = 1; k < class_count; k++)
     {
-        if (cuda_output[k] > cuda_output[max_index])
+        if (cuda_output[n * output_box_size + 5 + k] > cuda_output[n * output_box_size + 5 + max_index])
         {
             max_index = k;
         }
     }
     cuda_objects_index[n] = max_index;
+
     
     float confidence = cuda_output[n * output_box_size + 5 + max_index] * cuda_output[n * output_box_size + 4];
 
-    static float confidence_threshold = 0.45;
+    static const float confidence_threshold = 0.45;
 
     cuda_objects_index_mask[n] = confidence < confidence_threshold ? 0 : 1;
 
@@ -255,7 +257,7 @@ void find_all_max_class_score(float* cuda_output, int outputBoxecount)
     
     int output_box_size = 85;
     int grid_size = (outputBoxecount + 512) / 1024;//outputBoxecount: 25200
-    find_all_max_class_score_kernel<<<grid_size, 1024 >>>(cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, outputBoxecount);
+    find_all_max_class_score_kernel<<<grid_size, 1024>>>(cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, outputBoxecount);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
