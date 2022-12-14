@@ -237,8 +237,7 @@ __global__ void array_sum(int* cuda_array, int array_size)//¸Ãcuda_array Îª¶¨ÖÆ»
         cuda_array[array_size] += cuda_array[i];
     }
 
-    printf("array_sum run successful\n");
-    printf("cuda_array[array_size]: %d\n", cuda_array[array_size]);
+    printf("array_sum run successful, res: %d\n", cuda_array[array_size]);
 }
 
 void find_all_max_class_score(float* cuda_output, int outputBoxecount)
