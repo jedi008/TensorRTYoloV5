@@ -21,18 +21,12 @@
     <ClCompile Include="YoloV5Model.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="windows\getopt.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Tools.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="YoloV5Model.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="windows\getopt.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="common.h">

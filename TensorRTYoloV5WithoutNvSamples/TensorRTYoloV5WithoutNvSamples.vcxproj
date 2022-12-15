@@ -145,13 +145,11 @@
   <ItemGroup>
     <ClCompile Include="TensorRTYoloV5WithoutNvSamples.cpp" />
     <ClCompile Include="Tools.cpp" />
-    <ClCompile Include="windows\getopt.c" />
     <ClCompile Include="YoloV5Model.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="Tools.h" />
-    <ClInclude Include="windows\getopt.h" />
     <ClInclude Include="YoloV5Model.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
