@@ -39,5 +39,7 @@
   <ItemGroup>
     <CudaCompile Include="CudaOp.cuh" />
     <CudaCompile Include="CudaOp.cu" />
+    <CudaCompile Include="Common.cu" />
+    <CudaCompile Include="Common.cuh" />
   </ItemGroup>
 </Project>
