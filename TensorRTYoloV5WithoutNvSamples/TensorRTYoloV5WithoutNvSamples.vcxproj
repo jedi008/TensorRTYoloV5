@@ -140,8 +140,11 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;opencv_world452.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);nvinfer.lib;nvinfer_plugin.lib;nvonnxparser.lib;nvparsers.lib;cudnn.lib;cublas.lib;cudart.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;opencv_world452.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);nvinfer.lib;nvinfer_plugin.lib;nvonnxparser.lib;nvparsers.lib;cudnn.lib;cublas.lib;cudart.lib;cudadevrt.lib</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="TensorRTYoloV5WithoutNvSamples.cpp" />

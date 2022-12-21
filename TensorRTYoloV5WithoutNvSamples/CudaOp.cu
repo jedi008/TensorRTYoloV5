@@ -90,16 +90,16 @@ Error:
 }
 
 
-__global__ void find_all_max_class_score_kernel(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask, int outputBoxecount)
+__global__ void find_all_max_class_score_kernel(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask, int output_box_count)
 {
     int n = blockDim.x * blockIdx.x + threadIdx.x;
-    if (n >= outputBoxecount) return;
+    if (n >= output_box_count) return;
 
     int class_count = output_box_size - 5;//=80
-    int max_index = 0;
 
     float* base_p = cuda_output + n * output_box_size + 5;
 
+    int max_index = 0;
     for (int k = 1; k < class_count; k++)
     {
         if (base_p[k] > base_p[max_index])
@@ -107,9 +107,12 @@ __global__ void find_all_max_class_score_kernel(float* cuda_output, int output_b
             max_index = k;
         }
     }
-    cuda_objects_index[n] = max_index;
 
-    
+    //select_max_kernel << <1, 128 >> > (base_p, cuda_objects_index + n, class_count);
+    //cudaDeviceSynchronize();
+    //int max_index = cuda_objects_index[n];
+
+
     float confidence = base_p[max_index] * cuda_output[n * output_box_size + 4];
 
     static const float confidence_threshold = 0.45;
