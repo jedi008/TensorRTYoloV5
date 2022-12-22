@@ -206,17 +206,6 @@ __global__ void init_objects_kernel(float* cuda_output, int output_box_size, flo
 //}
 }
 
-//后期再将其优化为并行模式，逐步两两相加
-__global__ void array_sum_kernel(int* cuda_array, int array_size)//该cuda_array 为定制化的，申请空间大小时为array_size + 1, 最后一位用于存放sum
-{
-    cuda_array[array_size] = 0;
-    for (int i = 0; i < array_size; i++)
-    {
-        cuda_array[array_size] += cuda_array[i];
-    }
-
-    printf("array_sum run successful, res: %d\n", cuda_array[array_size]);
-}
 
 void find_all_max_class_score(float* cuda_output, int output_box_count)
 {
@@ -241,20 +230,14 @@ void find_all_max_class_score(float* cuda_output, int output_box_count)
     cudaEventRecord(start);
     
     find_all_max_class_score_kernel << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5);
+    HANDLE_ERROR(cudaDeviceSynchronize());
+    HANDLE_ERROR(cudaGetLastError());
+
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     float time;
     cudaEventElapsedTime(&time, start, stop);
     printf("find_all_max_class_score_kernel used %fms\n",time);
-
-    HANDLE_ERROR(cudaDeviceSynchronize());
-    HANDLE_ERROR(cudaGetLastError());
-
-
-
-    //array_sum_kernel << <1, 1 >> > (cuda_objects_index_mask, output_box_count);
-    //HANDLE_ERROR(cudaDeviceSynchronize());
-    //HANDLE_ERROR(cudaGetLastError());
 
 
     int objects_count = 0;
