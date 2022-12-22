@@ -216,9 +216,13 @@ void find_all_max_class_score(float* cuda_output, int output_box_count)
 
     //HANDLE_ERROR(cudaSetDevice(0));
 
-    cudaEvent_t start, stop;
+    float elapsed_time;
+    cudaEvent_t start, step1, step2, stop;
     cudaEventCreate(&start);
+    cudaEventCreate(&step1);
+    cudaEventCreate(&step2);
     cudaEventCreate(&stop);
+
 
     // Allocate GPU buffers.
     HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index, output_box_count * sizeof(int)) );
@@ -233,25 +237,40 @@ void find_all_max_class_score(float* cuda_output, int output_box_count)
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
-    float time;
-    cudaEventElapsedTime(&time, start, stop);
-    printf("find_all_max_class_score_kernel used %fms\n",time);
+    
+    cudaEventRecord(step1);
+    cudaEventSynchronize(step1);
+    cudaEventElapsedTime(&elapsed_time, start, step1);
+    printf("find_all_max_class_score_kernel used %fms\n", elapsed_time);
 
 
     int objects_count = 0;
     HANDLE_ERROR(cudaMemcpy(&objects_count, cuda_objects_index_mask + output_box_count, 1 * sizeof(int), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMalloc((void**)&cuda_objects, 6 * objects_count * sizeof(float)));//每个Boxinfo x,y,w,h,label,prob 6个值
 
+    
+    cudaEventRecord(step2);
+    cudaEventSynchronize(step2);
+    cudaEventElapsedTime(&elapsed_time, step1, step2);
+    printf("cudaMalloc cuda_objects used %fms\n", elapsed_time);
+
+
     printf("objects_count: %d\n", objects_count);
 
-    //init_objects_kernel << <grid_size, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, outputBoxecount);
+    init_objects_kernel << <grid_size, 1 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
+    HANDLE_ERROR(cudaDeviceSynchronize());
+    HANDLE_ERROR(cudaGetLastError());
 
 
     cudaFree(cuda_objects_index);
     cudaFree(cuda_objects_index_mask);
     cudaFree(cuda_objects);
+
+    
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&elapsed_time, start, stop);
+    printf("all cuda op used %fms\n", elapsed_time);
 }
 
 

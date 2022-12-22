@@ -7,6 +7,17 @@
 
 int main()
 {
+    for (unsigned long i = 0; i < ULONG_MAX; i++)
+    {
+        float fa = i;
+        unsigned long ia = fa;
+        if (ia != i)
+        {
+            std::cout << "fa : " << fa << "  ia: " << ia << std::endl;
+            break;
+        }
+    }
+
     cudaSetDevice(0);
     
     YoloV5Model* yolov5_model = new YoloV5Model();
