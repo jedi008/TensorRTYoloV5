@@ -27,7 +27,7 @@ __global__ void select_max_kernel(float* arr, int* index_r, const int len)
 		{
 			if (arr[index[tid]] < arr[index[tid + offset]])
 			{
-				index[tid] = tid + offset;
+				index[tid] = index[tid + offset];
 			}
 			__syncwarp();
 		}

@@ -1,7 +1,6 @@
 #include "CudaOp.cuh"
 
 
-
 __global__ void addKernel(int* c, const int* a, const int* b)
 {
     int i = threadIdx.x;
@@ -89,41 +88,74 @@ Error:
     return cudaStatus;
 }
 
-
-__global__ void find_all_max_class_score_kernel(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask, int output_box_count)
+//blocksize 必须设置为2的整数次方
+__global__ void find_all_max_class_score_kernel(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask,  int class_count)
 {
-    int n = blockDim.x * blockIdx.x + threadIdx.x;
-    if (n >= output_box_count) return;
+    const int tid = threadIdx.x;
+    const int bid = blockIdx.x;
+    const int len = blockDim.x;
+    const int n = bid * len + tid;
+    
+    __shared__ int index[128];
+    index[tid] = (tid < class_count) ? tid : 0;
+    __syncthreads();
 
-    int class_count = output_box_size - 5;//=80
+    if (tid >= class_count) return;
 
-    float* base_p = cuda_output + n * output_box_size + 5;
+    float* base_p = cuda_output + bid * output_box_size + 5;
 
-    int max_index = 0;
-    for (int k = 1; k < class_count; k++)
+    for (int offset = blockDim.x >> 1; offset >= 32; offset >>= 1)
     {
-        if (base_p[k] > base_p[max_index])
+        if (tid < offset)
         {
-            max_index = k;
+            if (base_p[index[tid]] < base_p[index[tid + offset]])
+            {
+                index[tid] = index[tid + offset];
+            }
+            __syncthreads();
         }
     }
 
-    //select_max_kernel << <1, 128 >> > (base_p, cuda_objects_index + n, class_count);
-    //cudaDeviceSynchronize();
-    //int max_index = cuda_objects_index[n];
+    for (int offset = 16; offset > 0; offset >>= 1)
+    {
+        if (tid < offset)
+        {
+            if (base_p[index[tid]] < base_p[index[tid + offset]])
+            {
+                index[tid] = index[tid + offset];
+            }
+            __syncwarp();
+        }
+    }
+    
+    if (tid == 0)
+    {
+        cuda_objects_index[bid] = index[0];
 
-
-    float confidence = base_p[max_index] * cuda_output[n * output_box_size + 4];
-
-    static const float confidence_threshold = 0.45;
-
-    cuda_objects_index_mask[n] = confidence < confidence_threshold ? 0 : 1;
+        const float confidence_threshold = 0.45;
+        cuda_objects_index_mask[bid] = (base_p[index[0]] * cuda_output[bid * output_box_size + 4]) > confidence_threshold ? 1 : 0;
+    }
 }
 
 __global__ void init_objects_kernel(float* cuda_output, int output_box_size, float* cuda_objects, int* cuda_objects_index, int* cuda_objects_index_mask, int outputBoxecount)
 {
-    int n = blockDim.x * blockIdx.x + threadIdx.x;
+    const int tid = threadIdx.x;
+    const int bid = blockIdx.x;
+    const int n = bid * blockDim.x + tid;
     if (n >= outputBoxecount) return;
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     //float confidence = cuda_output[n * output_box_size + 5 + max_index] * cuda_output[n * output_box_size + 4];
 
@@ -177,7 +209,7 @@ __global__ void array_sum_kernel(int* cuda_array, int array_size)//该cuda_array 
     printf("array_sum run successful, res: %d\n", cuda_array[array_size]);
 }
 
-void find_all_max_class_score(float* cuda_output, int outputBoxecount)
+void find_all_max_class_score(float* cuda_output, int output_boxe_count)
 {
     printf("find_all_max_class_score called.\n");
     int* cuda_objects_index;
@@ -189,40 +221,35 @@ void find_all_max_class_score(float* cuda_output, int outputBoxecount)
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
-    //cudaEventRecord(start);
-    ////你要测试的kernel
-    //wait until the stop event completes
-    //cudaEventRecord(stop);
-    //cudaEventSynchronize(stop);
-    //float time;
-    //cudaEventElapsedTime(&time, start, stop);
 
     // Allocate GPU buffers.
-    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index, outputBoxecount * sizeof(int)) );
-    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index_mask, (1 + outputBoxecount) * sizeof(int)));//多给一个size用于存放array的和
+    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index, output_boxe_count * sizeof(int)) );
+    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index_mask, (1 + output_boxe_count) * sizeof(int)));//多给一个size用于存放array的和
     
     
     int output_box_size = 85;
-    int grid_size = (outputBoxecount + 512) / 1024;//outputBoxecount: 25200
+    int grid_size = output_boxe_count;//outputBoxecount: 25200
     cudaEventRecord(start);
-    find_all_max_class_score_kernel<<<grid_size, 1024>>>(cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, outputBoxecount);
+    
+    find_all_max_class_score_kernel << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     float time;
     cudaEventElapsedTime(&time, start, stop);
     printf("find_all_max_class_score_kernel used %fms\n",time);
+
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
 
 
-    array_sum_kernel << <1, 1 >> > (cuda_objects_index_mask, outputBoxecount);
+    array_sum_kernel << <1, 1 >> > (cuda_objects_index_mask, output_boxe_count);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
 
     int objects_count = 0;
-    HANDLE_ERROR(cudaMemcpy(&objects_count, cuda_objects_index_mask + outputBoxecount, 1 * sizeof(int), cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy(&objects_count, cuda_objects_index_mask + output_boxe_count, 1 * sizeof(int), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMalloc((void**)&cuda_objects, 6 * objects_count * sizeof(float)));//每个Boxinfo x,y,w,h,label,prob 6个值
 
     //init_objects_kernel << <grid_size, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, outputBoxecount);
