@@ -94,6 +94,7 @@ __global__ void find_all_max_class_score_kernel(float* cuda_output, int output_b
     const int tid = threadIdx.x;
     const int bid = blockIdx.x;
     const int len = blockDim.x;
+    const int gridsize = gridDim.x;
     const int n = bid * len + tid;
     
     __shared__ int index[128];
@@ -133,7 +134,15 @@ __global__ void find_all_max_class_score_kernel(float* cuda_output, int output_b
         cuda_objects_index[bid] = index[0];
 
         const float confidence_threshold = 0.45;
-        cuda_objects_index_mask[bid] = (base_p[index[0]] * cuda_output[bid * output_box_size + 4]) > confidence_threshold ? 1 : 0;
+        if ((base_p[index[0]] * cuda_output[bid * output_box_size + 4]) > confidence_threshold)
+        {
+            cuda_objects_index_mask[bid] = 1;
+            atomicAdd(cuda_objects_index_mask + gridsize, 1);
+        }
+        else
+        {
+            cuda_objects_index_mask[bid] = 0;
+        }
     }
 }
 
@@ -209,7 +218,7 @@ __global__ void array_sum_kernel(int* cuda_array, int array_size)//该cuda_array 
     printf("array_sum run successful, res: %d\n", cuda_array[array_size]);
 }
 
-void find_all_max_class_score(float* cuda_output, int output_boxe_count)
+void find_all_max_class_score(float* cuda_output, int output_box_count)
 {
     printf("find_all_max_class_score called.\n");
     int* cuda_objects_index;
@@ -223,12 +232,12 @@ void find_all_max_class_score(float* cuda_output, int output_boxe_count)
     cudaEventCreate(&stop);
 
     // Allocate GPU buffers.
-    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index, output_boxe_count * sizeof(int)) );
-    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index_mask, (1 + output_boxe_count) * sizeof(int)));//多给一个size用于存放array的和
+    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index, output_box_count * sizeof(int)) );
+    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index_mask, (1 + output_box_count) * sizeof(int)));//多给一个size用于存放array的和
     
     
     int output_box_size = 85;
-    int grid_size = output_boxe_count;//outputBoxecount: 25200
+    int grid_size = output_box_count;//outputBoxecount: 25200
     cudaEventRecord(start);
     
     find_all_max_class_score_kernel << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5);
@@ -243,14 +252,16 @@ void find_all_max_class_score(float* cuda_output, int output_boxe_count)
 
 
 
-    array_sum_kernel << <1, 1 >> > (cuda_objects_index_mask, output_boxe_count);
-    HANDLE_ERROR(cudaDeviceSynchronize());
-    HANDLE_ERROR(cudaGetLastError());
+    //array_sum_kernel << <1, 1 >> > (cuda_objects_index_mask, output_box_count);
+    //HANDLE_ERROR(cudaDeviceSynchronize());
+    //HANDLE_ERROR(cudaGetLastError());
 
 
     int objects_count = 0;
-    HANDLE_ERROR(cudaMemcpy(&objects_count, cuda_objects_index_mask + output_boxe_count, 1 * sizeof(int), cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy(&objects_count, cuda_objects_index_mask + output_box_count, 1 * sizeof(int), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMalloc((void**)&cuda_objects, 6 * objects_count * sizeof(float)));//每个Boxinfo x,y,w,h,label,prob 6个值
+
+    printf("objects_count: %d\n", objects_count);
 
     //init_objects_kernel << <grid_size, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, outputBoxecount);
 
