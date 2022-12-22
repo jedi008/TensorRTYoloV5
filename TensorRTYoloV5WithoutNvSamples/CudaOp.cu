@@ -146,68 +146,38 @@ __global__ void find_all_max_class_score_kernel(float* cuda_output, int output_b
     }
 }
 
-__global__ void init_objects_kernel(float* cuda_output, int output_box_size, float* cuda_objects, int* cuda_objects_index, int* cuda_objects_index_mask, int outputBoxecount)
+__global__ void init_objects_kernel(float* cuda_output, int output_box_size, float* cuda_objects, int* cuda_objects_index, int* cuda_objects_index_mask, int output_box_count)
 {
     const int tid = threadIdx.x;
     const int bid = blockIdx.x;
     const int n = bid * blockDim.x + tid;
-    if (n >= outputBoxecount) return;
+    if (n >= output_box_count) return;
 
+    if (!cuda_objects_index_mask[n]) return;
 
+    int object_index = atomicSub(cuda_objects_index_mask + output_box_count, 1) - 1;
 
+    float* cuda_object_basep = cuda_objects + object_index * 6;
+    float* cuda_output_basep = cuda_output + n * output_box_size;
+    
+    float pb_cx = cuda_output_basep[0];
+    float pb_cy = cuda_output_basep[1];
+    float pb_w = cuda_output_basep[2];
+    float pb_h = cuda_output_basep[3];
 
+    float x0 = pb_cx - pb_w * 0.5f;
+    float y0 = pb_cy - pb_h * 0.5f;
 
-
-
-
-
-
-
-
-
-
-    //float confidence = cuda_output[n * output_box_size + 5 + max_index] * cuda_output[n * output_box_size + 4];
-
-    //for (int i = 0; i < outputBoxecount; i++)
-//{
-//    int indexs_size = 1 * sizeof(float);
-//    float* class_index = (float*)malloc(indexs_size);
-//    class_index[0] = 0;
-
-//    find_onebox_max_class_score(cuda_output + (i * outputBoxInfo + 5), class_index, indexs_size);
-
-//    int int_class_index = round(class_index[0]);
-//    //fprintf(stderr, "int_class_index: %d\n", int_class_index);
-
-//    float confidence = host_output[int_class_index] * host_output[i * outputBoxInfo + 4];
-
-//    if (confidence < confidence_threshold)
-//        continue;
-
-//    float pb_cx = host_output[i * outputBoxInfo + 0];
-//    float pb_cy = host_output[i * outputBoxInfo + 1];
-//    float pb_w = host_output[i * outputBoxInfo + 2];
-//    float pb_h = host_output[i * outputBoxInfo + 3];
-
-//    float x0 = pb_cx - pb_w * 0.5f;
-//    float y0 = pb_cy - pb_h * 0.5f;
-//    float x1 = pb_cx + pb_w * 0.5f;
-//    float y1 = pb_cy + pb_h * 0.5f;
-
-//    Object obj;
-//    obj.rect.x = x0;
-//    obj.rect.y = y0;
-//    obj.rect.width = x1 - x0;
-//    obj.rect.height = y1 - y0;
-//    obj.label = int_class_index;
-//    obj.prob = confidence;
-
-//    proposals.push_back(obj);
-//}
+    cuda_object_basep[0] = x0;
+    cuda_object_basep[1] = y0;
+    cuda_object_basep[2] = pb_w;
+    cuda_object_basep[3] = pb_h;
+    cuda_object_basep[4] = cuda_objects_index[n];
+    cuda_object_basep[5] = cuda_output_basep[5 + cuda_objects_index[n]] * cuda_output_basep[4];
 }
 
 
-void find_all_max_class_score(float* cuda_output, int output_box_count)
+void find_all_max_class_score(float* cuda_output, int output_box_count, float* host_objects)
 {
     printf("find_all_max_class_score called.\n");
     int* cuda_objects_index;
@@ -257,7 +227,8 @@ void find_all_max_class_score(float* cuda_output, int output_box_count)
 
     printf("objects_count: %d\n", objects_count);
 
-    init_objects_kernel << <grid_size, 1 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
+    //可以提前开辟100个objects，将该步骤与find_all_max_class_score_kernel 合并
+    init_objects_kernel << <(grid_size + 1023)/1024, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 

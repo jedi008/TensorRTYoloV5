@@ -26,16 +26,18 @@ void cvMat2Buffer(cv::Mat& img, float* hostDataBuffer)
     //std::cout << std::endl;
 }
 
-std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int outputBoxecount, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
+std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_box_count, int outputBoxInfo, float confidence_threshold, float nms_iou_threshold)
 {
     clock_t start, inference_end;
     start = clock();
     
     std::vector<Object> proposals;
 
-    std::cout << "outputBoxecount: " << outputBoxecount << std::endl;
+    std::cout << "output_box_count: " << output_box_count << std::endl;
 
-    find_all_max_class_score(cuda_output, outputBoxecount);
+    float* host_objects = nullptr;
+
+    find_all_max_class_score(cuda_output, output_box_count, host_objects);
 
     inference_end = clock();
     std::cout << "predOneImage used time = " << (double)(inference_end - start) << std::endl;
