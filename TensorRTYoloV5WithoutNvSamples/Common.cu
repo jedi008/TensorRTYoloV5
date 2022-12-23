@@ -38,3 +38,24 @@ __global__ void select_max_kernel(float* arr, int* index_r, const int len)
 		index_r[0] = index[0];
 	}
 }
+
+__global__ void rankSort(int* d_a, int* d_b)
+{
+	int tid = threadIdx.x;
+	int ttid = threadIdx.x + blockIdx.x * blockDim.x;
+	int val = d_a[ttid];
+	__shared__ int cache[5];
+	cache[tid] = d_a[ttid];
+	__syncthreads();
+	//统计每个数字比它小的数字有几个
+	int count = 0;
+	for (int j = 0; j < 5; j++)
+	{
+		if (val > cache[j])
+		{
+			count++;
+		}
+	}
+	__syncthreads();
+	d_b[count] = val;
+}

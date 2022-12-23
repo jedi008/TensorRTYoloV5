@@ -16,3 +16,5 @@ static void HandleError(cudaError_t err, const char* file, int line) {
 }
 
 __global__ void select_max_kernel(float* arr, int* index, const int len);
+
+__global__ void rankSort(int* d_a, int* d_b);
