@@ -57,7 +57,7 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
 
 
     // sort all proposals by score from highest to lowest
-    qsort_descent_inplace(proposals);
+    // qsort_descent_inplace(proposals); //“—‘⁄cuda÷–≈≈–Ú
 
     // apply nms with nms_threshold
     std::vector<int> picked;
@@ -93,7 +93,7 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
     inference_end = clock();
     std::cout << "predOneImage used time = " << (double)(inference_end - start) << std::endl;
 
-    return proposals;
+    return objects;
 }
 
 void qsort_descent_inplace(std::vector<Object>& faceobjects, int left, int right)
