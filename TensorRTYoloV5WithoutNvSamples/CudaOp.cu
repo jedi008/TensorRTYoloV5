@@ -92,7 +92,7 @@ Error:
 }
 
 //blocksize 必须设置为2的整数次方
-__global__ void find_all_max_class_score_kernel(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask,  int class_count)
+__global__ void kernel_find_all_max_class_score(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask,  int class_count)
 {
     const int tid = threadIdx.x;
     const int bid = blockIdx.x;
@@ -149,7 +149,7 @@ __global__ void find_all_max_class_score_kernel(float* cuda_output, int output_b
     }
 }
 
-__global__ void init_objects_kernel(float* cuda_output, int output_box_size, float* cuda_objects, int* cuda_objects_index, int* cuda_objects_index_mask, int output_box_count)
+__global__ void kernel_init_objects(float* cuda_output, int output_box_size, float* cuda_objects, int* cuda_objects_index, int* cuda_objects_index_mask, int output_box_count)
 {
     const int tid = threadIdx.x;
     const int bid = blockIdx.x;
@@ -236,7 +236,7 @@ int find_all_max_class_score(float* cuda_output, int output_box_count, float** h
     int grid_size = output_box_count;//outputBoxecount: 25200
     cudaEventRecord(start);
     
-    find_all_max_class_score_kernel << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5);
+    kernel_find_all_max_class_score << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
@@ -260,7 +260,7 @@ int find_all_max_class_score(float* cuda_output, int output_box_count, float** h
 
 
     //可以提前开辟100个objects，将该步骤与find_all_max_class_score_kernel 合并
-    init_objects_kernel << <(output_box_count + 1023)/1024, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
+    kernel_init_objects << <(output_box_count + 1023)/1024, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
