@@ -34,52 +34,38 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
     std::vector<Object> proposals;
 
     std::cout << "output_box_count: " << output_box_count << std::endl;
+    int objects_count = 88;
 
-    float* host_objects = nullptr;
+    float* host_objects = (float*)malloc(6 * 88 * sizeof(float));
+    //float host_objects[6 * 88] = { 0 };
+    cudaError_t cudaStatus = find_all_max_class_score(cuda_output, output_box_count, host_objects);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "addWithCuda failed!");
+        return proposals;
+    }
 
-    find_all_max_class_score(cuda_output, output_box_count, host_objects);
-
-    inference_end = clock();
-    std::cout << "predOneImage used time = " << (double)(inference_end - start) << std::endl;
-
-    return proposals;
+    printf("in cpp host_objects: %f - %f - %f - %f - %f - %f\n", host_objects[0], host_objects[1], host_objects[2], host_objects[3], host_objects[4], host_objects[5]);
     
-    /*
-    for (int i = 0; i < outputBoxecount; i++)
+    
+    
+
+    for (int i = 0; i < objects_count; i++)
     {
-        int indexs_size = 1 * sizeof(float);
-        float* class_index = (float*)malloc(indexs_size);
-        class_index[0] = 0;
-
-        find_onebox_max_class_score(cuda_output + (i * outputBoxInfo + 5), class_index, indexs_size);
-
-        int int_class_index = round(class_index[0]);
-        //fprintf(stderr, "int_class_index: %d\n", int_class_index);
-
-        float confidence = host_output[i * outputBoxInfo + 5 + int_class_index] * host_output[i * outputBoxInfo + 4];
-
-        if (confidence < confidence_threshold)
-            continue;
-
-        float pb_cx = host_output[i * outputBoxInfo + 0];
-        float pb_cy = host_output[i * outputBoxInfo + 1];
-        float pb_w = host_output[i * outputBoxInfo + 2];
-        float pb_h = host_output[i * outputBoxInfo + 3];
-
-        float x0 = pb_cx - pb_w * 0.5f;
-        float y0 = pb_cy - pb_h * 0.5f;
-        float x1 = pb_cx + pb_w * 0.5f;
-        float y1 = pb_cy + pb_h * 0.5f;
-
+        float* host_objects_basep = host_objects + 6 * i;
         Object obj;
-        obj.rect.x = x0;
-        obj.rect.y = y0;
-        obj.rect.width = x1 - x0;
-        obj.rect.height = y1 - y0;
-        obj.label = int_class_index;
-        obj.prob = confidence;
+        obj.rect.x = host_objects_basep[0];
+        obj.rect.y = host_objects_basep[1];
+        obj.rect.width = host_objects_basep[2];
+        obj.rect.height = host_objects_basep[3];
+        obj.label = int(host_objects_basep[4]);
+        obj.prob = host_objects_basep[5];
 
         proposals.push_back(obj);
+
+        if (i == 0)
+        {
+            std::cout << "obj 1: " << obj.rect.x << " - " << obj.rect.y << " - " << obj.rect.width << std::endl;
+        }
     }
 
 
@@ -115,12 +101,12 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
         objects[i].rect.width = x1 - x0;
         objects[i].rect.height = y1 - y0;
     }
+    //*/
 
-    //draw_objects(img, objects);
+    inference_end = clock();
+    std::cout << "predOneImage used time = " << (double)(inference_end - start) << std::endl;
 
-    return objects;
-
-    */
+    return proposals;
 }
 
 void qsort_descent_inplace(std::vector<Object>& faceobjects, int left, int right)

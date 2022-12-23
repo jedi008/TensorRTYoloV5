@@ -7,7 +7,7 @@ __global__ void addKernel(int* c, const int* a, const int* b)
     c[i] = a[i] + b[i];
 }
 
-cudaError_t addWithCuda2(int* c, const int* a, const int* b, unsigned int size)
+cudaError_t addWithCuda(int* c, const int* a, const int* b, unsigned int size)
 {
     int* dev_a = 0;
     int* dev_b = 0;
@@ -73,6 +73,8 @@ cudaError_t addWithCuda2(int* c, const int* a, const int* b, unsigned int size)
         goto Error;
     }
 
+    
+    printf("address c: %x\n", c);
     // Copy output vector from GPU buffer to host memory.
     cudaStatus = cudaMemcpy(c, dev_c, size * sizeof(int), cudaMemcpyDeviceToHost);
     if (cudaStatus != cudaSuccess) {
@@ -155,7 +157,7 @@ __global__ void init_objects_kernel(float* cuda_output, int output_box_size, flo
 
     if (!cuda_objects_index_mask[n]) return;
 
-    int object_index = atomicSub(cuda_objects_index_mask + output_box_count, 1) - 1;
+    int object_index = atomicAdd(cuda_objects_index_mask + output_box_count, -1) - 1;
 
     float* cuda_object_basep = cuda_objects + object_index * 6;
     float* cuda_output_basep = cuda_output + n * output_box_size;
@@ -172,13 +174,21 @@ __global__ void init_objects_kernel(float* cuda_output, int output_box_size, flo
     cuda_object_basep[1] = y0;
     cuda_object_basep[2] = pb_w;
     cuda_object_basep[3] = pb_h;
-    cuda_object_basep[4] = cuda_objects_index[n];
+    cuda_object_basep[4] = float(cuda_objects_index[n]);
     cuda_object_basep[5] = cuda_output_basep[5 + cuda_objects_index[n]] * cuda_output_basep[4];
+
+    if (object_index == 0)
+    {
+        printf("init_objects_kernel called, object_index: %d  x0: %f\n", object_index, x0);
+        printf("cuda_objects: %f - %f - %f - %f - %f - %f\n", cuda_objects[0], cuda_objects[1], cuda_objects[2], cuda_objects[3], cuda_objects[4], cuda_objects[5]);
+    }
 }
 
 
-void find_all_max_class_score(float* cuda_output, int output_box_count, float* host_objects)
+cudaError_t find_all_max_class_score(float* cuda_output, int output_box_count, float* host_objects)
 {
+    cudaError_t cudaStatus;
+
     printf("find_all_max_class_score called.\n");
     int* cuda_objects_index;
     int* cuda_objects_index_mask;
@@ -217,7 +227,7 @@ void find_all_max_class_score(float* cuda_output, int output_box_count, float* h
     int objects_count = 0;
     HANDLE_ERROR(cudaMemcpy(&objects_count, cuda_objects_index_mask + output_box_count, 1 * sizeof(int), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMalloc((void**)&cuda_objects, 6 * objects_count * sizeof(float)));//每个Boxinfo x,y,w,h,label,prob 6个值
-
+    printf("cuda_objects address: %x\n", cuda_objects);
     
     cudaEventRecord(step2);
     cudaEventSynchronize(step2);
@@ -228,9 +238,18 @@ void find_all_max_class_score(float* cuda_output, int output_box_count, float* h
     printf("objects_count: %d\n", objects_count);
 
     //可以提前开辟100个objects，将该步骤与find_all_max_class_score_kernel 合并
-    init_objects_kernel << <(grid_size + 1023)/1024, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
+    init_objects_kernel << <(output_box_count + 1023)/1024, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
+
+
+    //printf("1 host_objects: %x\n", host_objects);
+    printf("0 host_objects: %f - %f - %f - %f - %f - %f\n", host_objects[0], host_objects[1], host_objects[2], host_objects[3], host_objects[4], host_objects[5]);
+    cudaStatus = cudaMemcpy(host_objects, cuda_objects, 6 * objects_count * sizeof(float), cudaMemcpyDeviceToHost);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+    }
+    printf("1 host_objects: %f - %f - %f - %f - %f - %f\n", host_objects[0], host_objects[1], host_objects[2], host_objects[3], host_objects[4], host_objects[5]);
 
 
     cudaFree(cuda_objects_index);
@@ -242,6 +261,9 @@ void find_all_max_class_score(float* cuda_output, int output_box_count, float* h
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&elapsed_time, start, stop);
     printf("all cuda op used %fms\n", elapsed_time);
+
+    //return objects_count;
+    return cudaStatus;
 }
 
 
