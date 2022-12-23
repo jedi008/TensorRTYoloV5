@@ -85,25 +85,6 @@ bool YoloV5Model::build_from_enginefile(std::string onnxfilename)
 
 bool YoloV5Model::infer(std::vector<cv::Mat > images)
 {
-	const int arraySize = 5;
-	const int a[arraySize] = { 1, 2, 3, 4, 5 };
-	const int b[arraySize] = { 10, 20, 30, 40, 50 };
-	int c[arraySize] = { 0 };
-
-	std::cout << "address c: " << c << std::endl;
-	// Add vectors in parallel.
-	cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-	if (cudaStatus != cudaSuccess) {
-		fprintf(stderr, "addWithCuda failed!");
-		return 1;
-	}
-
-	printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-		c[0], c[1], c[2], c[3], c[4]);
-
-
-	
-	
 	auto context = SampleUniquePtr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
 	if (!context)
 	{
@@ -199,7 +180,7 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 			"microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
 			"hair drier", "toothbrush"
 		};
-		draw_objects(img, objects, class_names_default);
+		//draw_objects(img, objects, class_names_default);
 	}
 
 	cudaFree(buffers[0]);

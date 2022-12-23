@@ -1,5 +1,6 @@
 #include "CudaOp.cuh"
 
+#include <malloc.h>
 
 __global__ void addKernel(int* c, const int* a, const int* b)
 {
@@ -176,19 +177,11 @@ __global__ void init_objects_kernel(float* cuda_output, int output_box_size, flo
     cuda_object_basep[3] = pb_h;
     cuda_object_basep[4] = float(cuda_objects_index[n]);
     cuda_object_basep[5] = cuda_output_basep[5 + cuda_objects_index[n]] * cuda_output_basep[4];
-
-    if (object_index == 0)
-    {
-        printf("init_objects_kernel called, object_index: %d  x0: %f\n", object_index, x0);
-        printf("cuda_objects: %f - %f - %f - %f - %f - %f\n", cuda_objects[0], cuda_objects[1], cuda_objects[2], cuda_objects[3], cuda_objects[4], cuda_objects[5]);
-    }
 }
 
 
-cudaError_t find_all_max_class_score(float* cuda_output, int output_box_count, float* host_objects)
+int find_all_max_class_score(float* cuda_output, int output_box_count, float** host_objects_p)
 {
-    cudaError_t cudaStatus;
-
     printf("find_all_max_class_score called.\n");
     int* cuda_objects_index;
     int* cuda_objects_index_mask;
@@ -227,7 +220,6 @@ cudaError_t find_all_max_class_score(float* cuda_output, int output_box_count, f
     int objects_count = 0;
     HANDLE_ERROR(cudaMemcpy(&objects_count, cuda_objects_index_mask + output_box_count, 1 * sizeof(int), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMalloc((void**)&cuda_objects, 6 * objects_count * sizeof(float)));//每个Boxinfo x,y,w,h,label,prob 6个值
-    printf("cuda_objects address: %x\n", cuda_objects);
     
     cudaEventRecord(step2);
     cudaEventSynchronize(step2);
@@ -235,7 +227,6 @@ cudaError_t find_all_max_class_score(float* cuda_output, int output_box_count, f
     printf("cudaMalloc cuda_objects used %fms\n", elapsed_time);
 
 
-    printf("objects_count: %d\n", objects_count);
 
     //可以提前开辟100个objects，将该步骤与find_all_max_class_score_kernel 合并
     init_objects_kernel << <(output_box_count + 1023)/1024, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
@@ -243,14 +234,10 @@ cudaError_t find_all_max_class_score(float* cuda_output, int output_box_count, f
     HANDLE_ERROR(cudaGetLastError());
 
 
-    //printf("1 host_objects: %x\n", host_objects);
-    printf("0 host_objects: %f - %f - %f - %f - %f - %f\n", host_objects[0], host_objects[1], host_objects[2], host_objects[3], host_objects[4], host_objects[5]);
-    cudaStatus = cudaMemcpy(host_objects, cuda_objects, 6 * objects_count * sizeof(float), cudaMemcpyDeviceToHost);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-    }
-    printf("1 host_objects: %f - %f - %f - %f - %f - %f\n", host_objects[0], host_objects[1], host_objects[2], host_objects[3], host_objects[4], host_objects[5]);
-
+    float* d_host_objects = (float*)malloc(6 * objects_count * sizeof(float));
+    HANDLE_ERROR(cudaMemcpy(d_host_objects, cuda_objects, 6 * objects_count * sizeof(float), cudaMemcpyDeviceToHost));
+    //printf("1 d_host_objects: %f - %f - %f - %f - %f - %f\n", d_host_objects[0], d_host_objects[1], d_host_objects[2], d_host_objects[3], d_host_objects[4], d_host_objects[5]);
+    *host_objects_p = d_host_objects;
 
     cudaFree(cuda_objects_index);
     cudaFree(cuda_objects_index_mask);
@@ -262,8 +249,7 @@ cudaError_t find_all_max_class_score(float* cuda_output, int output_box_count, f
     cudaEventElapsedTime(&elapsed_time, start, stop);
     printf("all cuda op used %fms\n", elapsed_time);
 
-    //return objects_count;
-    return cudaStatus;
+    return objects_count;
 }
 
 

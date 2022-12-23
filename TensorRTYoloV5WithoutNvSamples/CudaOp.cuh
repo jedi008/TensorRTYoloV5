@@ -8,4 +8,4 @@
 
 cudaError_t addWithCuda(int* c, const int* a, const int* b, unsigned int size);
 
-cudaError_t find_all_max_class_score(float* cuda_output, int outputBoxecount, float* host_objects);
+int find_all_max_class_score(float* cuda_output, int outputBoxecount, float** host_objects_p);

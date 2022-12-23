@@ -34,17 +34,9 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
     std::vector<Object> proposals;
 
     std::cout << "output_box_count: " << output_box_count << std::endl;
-    int objects_count = 88;
 
-    float* host_objects = (float*)malloc(6 * 88 * sizeof(float));
-    //float host_objects[6 * 88] = { 0 };
-    cudaError_t cudaStatus = find_all_max_class_score(cuda_output, output_box_count, host_objects);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
-        return proposals;
-    }
-
-    printf("in cpp host_objects: %f - %f - %f - %f - %f - %f\n", host_objects[0], host_objects[1], host_objects[2], host_objects[3], host_objects[4], host_objects[5]);
+    float* host_objects = nullptr;
+    int objects_count = find_all_max_class_score(cuda_output, output_box_count, &host_objects);
     
     
     
@@ -61,11 +53,6 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
         obj.prob = host_objects_basep[5];
 
         proposals.push_back(obj);
-
-        if (i == 0)
-        {
-            std::cout << "obj 1: " << obj.rect.x << " - " << obj.rect.y << " - " << obj.rect.width << std::endl;
-        }
     }
 
 
