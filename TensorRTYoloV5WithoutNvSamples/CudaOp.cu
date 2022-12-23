@@ -180,6 +180,37 @@ __global__ void init_objects_kernel(float* cuda_output, int output_box_size, flo
 }
 
 
+__global__ void kernel_objects_sort(float* cuda_objects, int objects_count, float* cuda_objects_sorted)
+{
+    int tid = threadIdx.x;
+
+    float* cuda_objects_bp = cuda_objects + tid * 6;
+    float prob = cuda_objects_bp[5];
+    extern __shared__ float cache[];
+    cache[tid] = prob;
+    __syncthreads();
+
+    //统计比当前置信度大的有几个
+    int count = 0;
+    for (int i = 0; i < objects_count; i++)
+    {
+        if (prob < cache[i])
+        {
+            count++;
+        }
+    }
+    __syncthreads();
+
+    float* cuda_objects_sorted_bp = cuda_objects_sorted + count * 6;
+    cuda_objects_sorted_bp[0] = cuda_objects_bp[0];
+    cuda_objects_sorted_bp[1] = cuda_objects_bp[1];
+    cuda_objects_sorted_bp[2] = cuda_objects_bp[2];
+    cuda_objects_sorted_bp[3] = cuda_objects_bp[3];
+    cuda_objects_sorted_bp[4] = cuda_objects_bp[4];
+    cuda_objects_sorted_bp[5] = prob;
+    //cudaMemcpy(cuda_objects_sorted + count * 6, cuda_objects + tid * 6, 6 * sizeof(float), cudaMemcpyDeviceToDevice); //不可在核函数中运行
+}
+
 int find_all_max_class_score(float* cuda_output, int output_box_count, float** host_objects_p)
 {
     printf("find_all_max_class_score called.\n");
@@ -234,14 +265,24 @@ int find_all_max_class_score(float* cuda_output, int output_box_count, float** h
     HANDLE_ERROR(cudaGetLastError());
 
 
+
+    float* cuda_objects_sorted;
+    HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_sorted, 6 * objects_count * sizeof(float)));//每个Boxinfo x,y,w,h,label,prob 6个值
+    kernel_objects_sort << <1, objects_count, objects_count * sizeof(float) >> > (cuda_objects, objects_count, cuda_objects_sorted);//默认objects_count不会超过1024个
+    HANDLE_ERROR(cudaDeviceSynchronize());
+    HANDLE_ERROR(cudaGetLastError());
+
+
+
     float* d_host_objects = (float*)malloc(6 * objects_count * sizeof(float));
-    HANDLE_ERROR(cudaMemcpy(d_host_objects, cuda_objects, 6 * objects_count * sizeof(float), cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy(d_host_objects, cuda_objects_sorted, 6 * objects_count * sizeof(float), cudaMemcpyDeviceToHost));
     //printf("1 d_host_objects: %f - %f - %f - %f - %f - %f\n", d_host_objects[0], d_host_objects[1], d_host_objects[2], d_host_objects[3], d_host_objects[4], d_host_objects[5]);
     *host_objects_p = d_host_objects;
 
     cudaFree(cuda_objects_index);
     cudaFree(cuda_objects_index_mask);
     cudaFree(cuda_objects);
+    cudaFree(cuda_objects_sorted);
 
     
     cudaEventRecord(stop);
