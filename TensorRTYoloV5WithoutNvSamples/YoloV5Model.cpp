@@ -123,7 +123,7 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 	
 	// 给模型输出数据分配相应的CPU内存
 	float* host_input_buffer = (float*)malloc(input_size);
-	float* host_output_buffer = (float*)malloc(output_size);
+	//float* host_output_buffer = (float*)malloc(output_size);
 
 	for (int i = 0; i < images.size(); i++)
 	{
@@ -186,7 +186,7 @@ bool YoloV5Model::infer(std::vector<cv::Mat > images)
 	cudaFree(buffers[0]);
 	cudaFree(buffers[1]);
 	free(host_input_buffer);
-	free(host_output_buffer);
+	//free(host_output_buffer);
 	
 	return true;
 }
