@@ -38,8 +38,6 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
     float* host_objects = nullptr;
     int objects_count = find_all_max_class_score(cuda_output, output_box_count, &host_objects);
     
-    
-    
 
     for (int i = 0; i < objects_count; i++)
     {
@@ -56,6 +54,11 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
     }
 
 
+    inference_end = clock();
+    std::cout << "predOneImage used time = " << (double)(inference_end - start) << std::endl;
+    return proposals;
+
+/*
     // sort all proposals by score from highest to lowest
     // qsort_descent_inplace(proposals); //ÒÑÔÚcudaÖÐÅÅÐò
 
@@ -88,12 +91,13 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
         objects[i].rect.width = x1 - x0;
         objects[i].rect.height = y1 - y0;
     }
-    //*/
 
     inference_end = clock();
     std::cout << "predOneImage used time = " << (double)(inference_end - start) << std::endl;
 
     return objects;
+
+*/
 }
 
 void qsort_descent_inplace(std::vector<Object>& faceobjects, int left, int right)
