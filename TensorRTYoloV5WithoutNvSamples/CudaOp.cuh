@@ -6,6 +6,5 @@
 #include "common.cuh"
 
 
-cudaError_t addWithCuda(int* c, const int* a, const int* b, unsigned int size);
 
 int cuda_after_op_oneimg(float* cuda_output, int outputBoxecount, float** host_objects_p, float confidence_threshold, float nms_iou_threshold);
