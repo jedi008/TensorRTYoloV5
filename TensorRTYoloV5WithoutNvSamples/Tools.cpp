@@ -36,7 +36,7 @@ std::vector<Object> predOneImage(cv::Mat& img, float* cuda_output, int output_bo
     std::cout << "output_box_count: " << output_box_count << std::endl;
 
     float* host_objects = nullptr;
-    int objects_count = find_all_max_class_score(cuda_output, output_box_count, &host_objects);
+    int objects_count = cuda_after_op_oneimg(cuda_output, output_box_count, &host_objects, confidence_threshold, nms_iou_threshold);
     
 
     for (int i = 0; i < objects_count; i++)

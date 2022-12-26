@@ -8,4 +8,4 @@
 
 cudaError_t addWithCuda(int* c, const int* a, const int* b, unsigned int size);
 
-int find_all_max_class_score(float* cuda_output, int outputBoxecount, float** host_objects_p);
+int cuda_after_op_oneimg(float* cuda_output, int outputBoxecount, float** host_objects_p, float confidence_threshold, float nms_iou_threshold);

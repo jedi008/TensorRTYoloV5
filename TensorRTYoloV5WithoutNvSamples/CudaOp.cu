@@ -93,7 +93,7 @@ Error:
 }
 
 //blocksize 必须设置为2的整数次方
-__global__ void kernel_find_all_max_class_score(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask,  int class_count)
+__global__ void kernel_find_all_max_class_score(float* cuda_output, int output_box_size, int* cuda_objects_index, int* cuda_objects_index_mask,  int class_count, float confidence_threshold)
 {
     const int tid = threadIdx.x;
     const int bid = blockIdx.x;
@@ -137,7 +137,6 @@ __global__ void kernel_find_all_max_class_score(float* cuda_output, int output_b
     {
         cuda_objects_index[bid] = index[0];
 
-        const float confidence_threshold = 0.45;
         if ((base_p[index[0]] * cuda_output[bid * output_box_size + 4]) > confidence_threshold)
         {
             cuda_objects_index_mask[bid] = 1;
@@ -251,7 +250,7 @@ __global__ void kernel_nms(float* cuda_objects_sorted, int objects_count, bool* 
 }
 
 
-int find_all_max_class_score(float* cuda_output, int output_box_count, float** host_objects_p)
+int cuda_after_op_oneimg(float* cuda_output, int output_box_count, float** host_objects_p, float confidence_threshold, float nms_iou_threshold)
 {
     printf("find_all_max_class_score called.\n");
     int* cuda_objects_index;
@@ -277,7 +276,7 @@ int find_all_max_class_score(float* cuda_output, int output_box_count, float** h
     int grid_size = output_box_count;//outputBoxecount: 25200
     cudaEventRecord(start);
     
-    kernel_find_all_max_class_score << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5);
+    kernel_find_all_max_class_score << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5, confidence_threshold);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
@@ -317,7 +316,7 @@ int find_all_max_class_score(float* cuda_output, int output_box_count, float** h
     //cuda nms
     bool* cuda_pickedmask;
     HANDLE_ERROR(cudaMalloc((void**)&cuda_pickedmask, objects_count * sizeof(bool)));
-    kernel_nms << <1, objects_count, objects_count * sizeof(float)>> > (cuda_objects_sorted, objects_count, cuda_pickedmask, 0.35);
+    kernel_nms << <1, objects_count, objects_count * sizeof(float)>> > (cuda_objects_sorted, objects_count, cuda_pickedmask, nms_iou_threshold);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
