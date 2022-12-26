@@ -212,41 +212,41 @@ __global__ void kernel_objects_sort(float* cuda_objects, int objects_count, floa
 }
 
 
-//gridsize = blocksize = objects_count， 每个Box 跟 除自己以外的box计算iou
-__global__ void kernel_nms(float* cuda_objects_sorted, int objects_count, bool* dev_pickedmask, int nms_threshold, bool agnostic = false)
+__global__ void kernel_nms(float* cuda_objects_sorted, int objects_count, bool* cuda_pickedmask, float nms_threshold, bool agnostic = false)
 {
     const int tid = threadIdx.x;
-    const int bid = blockIdx.x;
-    //const int n = bid * blockDim.x + tid;
-    if (tid == 0)
-        dev_pickedmask[bid] = true;//设置初值为true
+
+    cuda_pickedmask[tid] = true;
 
     float* check_box_p = cuda_objects_sorted + 6 * tid;
     extern __shared__ float areas[];
     areas[tid] = check_box_p[2] * check_box_p[3];//area
     __syncthreads();
 
-    if (bid <= tid || !dev_pickedmask[tid]) //执行到这一步时有可能其他线程还没有执行完，dev_pickedmask[tid]还没有被置为false，出现BUG
-        return; //1.自己和自己不用计算iou  2.排在后面的box score比自身小， 由其引起的nms筛除无效  3. 已经被排除掉的box也不用再考虑了
 
-    float* box_p = cuda_objects_sorted + 6 * bid;//考虑是否需要通过nms检测的box
-
-    if (!agnostic && fabsf(check_box_p[4] - box_p[4]) > 0.1) return;//不是同一个类别的物体不做nms
-
-
-
-    float x1 = fmaxf(box_p[0], check_box_p[0]);
-    float y1 = fmaxf(box_p[1], check_box_p[1]);
-    float x2 = fminf(box_p[0] + box_p[2], check_box_p[0] + check_box_p[0]);
-    float y2 = fminf(box_p[1] + box_p[3], check_box_p[1] + check_box_p[3]);
-    float width = fmaxf(x2 - x1, 0);
-    float height = fmaxf(y2 - y1, 0);
-    float inter_area = width * height;
-    float union_area = areas[bid] + areas[tid] - inter_area;
-    if (inter_area / union_area > nms_threshold)
+    for (int i = 0; i < objects_count; i++)
     {
-        dev_pickedmask[bid] = false;
-        //printf("bid tid del one: %d-%d %f %f %f %f %f %f\n", bid, tid, box_p[0], box_p[1], box_p[2], box_p[3], box_p[4], box_p[5]);
+        if (tid < i && cuda_pickedmask[tid])//考虑第i个box是否需要加入picked： 1.自己和自己不用计算iou 2.排在后面的box score比自身小， 由其引起的nms筛除无效 3.之前的计算中已经被pass掉的Box也无需再考虑
+        {
+            float* box_p = cuda_objects_sorted + 6 * i;//考虑是否需要通过nms检测的box
+            if (agnostic || fabsf(check_box_p[4] - box_p[4]) < 0.1)//不是同一个类别的物体不做nms. 开启了无视类别或者就是同一类别的box，才做后面nms操作
+            {
+                float x1 = fmaxf(box_p[0], check_box_p[0]);
+                float y1 = fmaxf(box_p[1], check_box_p[1]);
+                float x2 = fminf(box_p[0] + box_p[2], check_box_p[0] + check_box_p[2]);
+                float y2 = fminf(box_p[1] + box_p[3], check_box_p[1] + check_box_p[3]);
+                float width = fmaxf(x2 - x1, 0);
+                float height = fmaxf(y2 - y1, 0);
+                float inter_area = width * height;
+                float union_area = areas[i] + areas[tid] - inter_area;
+                if (inter_area / union_area > nms_threshold)
+                {
+                    cuda_pickedmask[i] = false;
+                    //printf("i tid del one: %d-%d %f %f %f %f %f %f\n", i, tid, box_p[0], box_p[1], box_p[2], box_p[3], box_p[4], box_p[5]);
+                }
+            }
+        }
+        __syncthreads();
     }
 }
 
@@ -317,7 +317,7 @@ int find_all_max_class_score(float* cuda_output, int output_box_count, float** h
     //cuda nms
     bool* cuda_pickedmask;
     HANDLE_ERROR(cudaMalloc((void**)&cuda_pickedmask, objects_count * sizeof(bool)));
-    kernel_nms << <objects_count, objects_count, objects_count * sizeof(float)>> > (cuda_objects_sorted, objects_count, cuda_pickedmask, 0.35);
+    kernel_nms << <1, objects_count, objects_count * sizeof(float)>> > (cuda_objects_sorted, objects_count, cuda_pickedmask, 0.35);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
