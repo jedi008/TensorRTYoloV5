@@ -215,6 +215,13 @@ int cuda_after_op_oneimg(float* cuda_output, int output_box_count, float** host_
     kernel_init_objects << <(output_box_count + 1023)/1024, 1024 >> > (cuda_output, output_box_size, cuda_objects, cuda_objects_index, cuda_objects_index_mask, output_box_count);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
+    if (objects_count == 0) //没有检测到一个目标就直接返回
+    {
+        cudaFree(cuda_objects_index);
+        cudaFree(cuda_objects_index_mask);
+        cudaFree(cuda_objects);
+        return 0;
+    }
 
 
 
