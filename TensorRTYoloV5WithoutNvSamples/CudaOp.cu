@@ -162,7 +162,7 @@ __global__ void kernel_nms(float* cuda_objects_sorted, int objects_count, bool* 
 }
 
 
-int cuda_after_op_oneimg(float* cuda_output, int output_box_count, float** host_objects_p, float confidence_threshold, float nms_iou_threshold)
+int cuda_after_op_oneimg(float* cuda_output, int output_box_count, int output_box_size, float** host_objects_p, float confidence_threshold, float nms_iou_threshold)
 {
     printf("find_all_max_class_score called.\n");
     int* cuda_objects_index;
@@ -184,7 +184,6 @@ int cuda_after_op_oneimg(float* cuda_output, int output_box_count, float** host_
     HANDLE_ERROR(cudaMalloc((void**)&cuda_objects_index_mask, (1 + output_box_count) * sizeof(int)));//多给一个size用于存放array的和
     
     
-    int output_box_size = 85;
     int grid_size = output_box_count;//outputBoxecount: 25200
     cudaEventRecord(start);
     

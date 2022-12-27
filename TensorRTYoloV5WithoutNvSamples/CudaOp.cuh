@@ -7,4 +7,4 @@
 
 
 
-int cuda_after_op_oneimg(float* cuda_output, int outputBoxecount, float** host_objects_p, float confidence_threshold, float nms_iou_threshold);
+int cuda_after_op_oneimg(float* cuda_output, int outputBoxecount, int output_box_size, float** host_objects_p, float confidence_threshold, float nms_iou_threshold);
