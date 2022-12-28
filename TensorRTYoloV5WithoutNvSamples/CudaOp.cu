@@ -188,7 +188,7 @@ int cuda_after_op_oneimg(float* cuda_output, int output_box_count, int output_bo
     cudaEventRecord(start);
     
     kernel_find_all_max_class_score << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5, confidence_threshold);
-    HANDLE_ERROR(cudaDeviceSynchronize());
+    HANDLE_ERROR(cudaDeviceSynchronize());//因在同一个cuda流中，后面的代码还是会等待kernel_find_all_max_class_score执行完毕才会执行
     HANDLE_ERROR(cudaGetLastError());
 
     
