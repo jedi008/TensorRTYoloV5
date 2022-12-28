@@ -80,13 +80,13 @@ __global__ void kernel_init_objects(float* cuda_output, int output_box_size, flo
     float pb_w = cuda_output_basep[2];
     float pb_h = cuda_output_basep[3];
 
-    float x0 = pb_cx - pb_w * 0.5f;
-    float y0 = pb_cy - pb_h * 0.5f;
+    float x0 = fmaxf(fminf(pb_cx - pb_w * 0.5f, 640), 0);
+    float y0 = fmaxf(fminf(pb_cy - pb_h * 0.5f, 640), 0);
 
     cuda_object_basep[0] = x0;
     cuda_object_basep[1] = y0;
-    cuda_object_basep[2] = pb_w;
-    cuda_object_basep[3] = pb_h;
+    cuda_object_basep[2] = fminf(pb_w, 640 - x0);
+    cuda_object_basep[3] = fminf(pb_h, 640 - y0);
     cuda_object_basep[4] = float(cuda_objects_index[n]);
     cuda_object_basep[5] = cuda_output_basep[5 + cuda_objects_index[n]] * cuda_output_basep[4];
 }
@@ -188,7 +188,7 @@ int cuda_after_op_oneimg(float* cuda_output, int output_box_count, int output_bo
     cudaEventRecord(start);
     
     kernel_find_all_max_class_score << <grid_size, 128 >> > (cuda_output, output_box_size, cuda_objects_index, cuda_objects_index_mask, output_box_size - 5, confidence_threshold);
-    HANDLE_ERROR(cudaDeviceSynchronize());//因在同一个cuda流中，后面的代码还是会等待kernel_find_all_max_class_score执行完毕才会执行
+    HANDLE_ERROR(cudaDeviceSynchronize());//因在同一个cuda流中，后面的代码还是会等待kernel_find_all_max_class_score执行完毕才会执行， 所以可以删除这两行在该demo中没有影响
     HANDLE_ERROR(cudaGetLastError());
 
     
